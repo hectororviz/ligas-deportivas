@@ -1,0 +1,26 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.sqlite3
+
+# Entornos
+.env
+.venv/
+venv/
+ENV/
+env/
+*.egg-info/
+
+# Django
+/staticfiles/
+media/
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+
+# Poetry
+poetry.lock
