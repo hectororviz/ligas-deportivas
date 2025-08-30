@@ -1,0 +1,13 @@
+{% extends 'ligas/base_admin.html' %}
+{% block title %}Formulario{% endblock %}
+{% block header %}Editar/Crear{% endblock %}
+{% block content %}
+  <form method="post">{% csrf_token %}
+    {{ form.as_p }}
+    <div style="margin-top:12px;">
+      <button class="btn primary" type="submit">Guardar</button>
+      <a class="btn" href="javascript:history.back()">Cancelar</a>
+    </div>
+  </form>
+{% endblock %}
+

@@ -1,4 +1,5 @@
 from django.db import models
+from django.core.validators import RegexValidator
 
 
 # ==========
@@ -252,3 +253,39 @@ class TablaPosicion(models.Model):
 
     def __str__(self) -> str:
         return f"{self.categoria} - {self.equipo} ({self.puntos} pts)"
+
+
+# ======================
+# CONFIGURACIÓN / IDENTIDAD
+# ======================
+
+hex_color_validator = RegexValidator(
+    regex=r"^#(?:[0-9a-fA-F]{3}){1,2}$",
+    message="Debe ser un color HEX válido, ej: #111827 o #2563eb",
+)
+
+
+class SiteIdentity(models.Model):
+    # Singleton para identidad del sitio
+    site_title = models.CharField(max_length=80, default="Sistema de Ligas")
+    sidebar_bg = models.CharField(max_length=7, default="#111827", validators=[hex_color_validator])
+    accent_color = models.CharField(max_length=7, default="#2563eb", validators=[hex_color_validator])
+    logo_url = models.URLField(blank=True, help_text="URL de la imagen (max 300x300).")
+    # Redes sociales
+    facebook_url = models.URLField(blank=True)
+    instagram_url = models.URLField(blank=True)
+    tiktok_url = models.URLField(blank=True)
+    whatsapp_url = models.URLField(blank=True)
+    twitter_url = models.URLField(blank=True)
+
+    class Meta:
+        verbose_name = "Identidad del sitio"
+        verbose_name_plural = "Identidad del sitio"
+
+    def __str__(self) -> str:
+        return "Identidad"
+
+    @classmethod
+    def get_solo(cls):
+        obj, _ = cls.objects.get_or_create(pk=1)
+        return obj

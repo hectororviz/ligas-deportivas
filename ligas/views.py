@@ -1,3 +1,5 @@
-from django.http import HttpResponse
+from django.shortcuts import render
+
+
 def home(request):
-    return HttpResponse("<h1>Sistema de Ligas</h1><p>Entrá al <a href='/admin/'>Admin</a>.</p>")
+    return render(request, "ligas/home.html")

@@ -1,0 +1,46 @@
+{% extends 'ligas/base_admin.html' %}
+{% block title %}Categorías{% endblock %}
+{% block header %}Categorías{% endblock %}
+{% block breadcrumbs %}<a href="/">Inicio</a> / Administración / Categorías{% endblock %}
+{% block actions %}
+  <form method="get" class="searchbar" action="">
+    <input type="text" name="q" value="{{ request.GET.q }}" placeholder="Buscar por nombre o torneo...">
+    <button class="btn" type="submit">Buscar</button>
+  </form>
+  {% if perms.ligas.add_categoria %}
+    <a class="btn primary" href="{% url 'ligas:categoria_create' %}">Nueva categoría</a>
+  {% endif %}
+{% endblock %}
+{% block content %}
+  <table>
+    <thead>
+      <tr><th>Nombre</th><th>Torneo</th><th>Activa</th><th>Acciones</th></tr>
+    </thead>
+    <tbody>
+      {% for obj in object_list %}
+      <tr>
+        <td>{{ obj.nombre }}</td>
+        <td>{{ obj.torneo }}</td>
+        <td>{% if obj.activa %}Sí{% else %}No{% endif %}</td>
+        <td>
+          {% if perms.ligas.change_categoria %}<a class="btn" href="{% url 'ligas:categoria_update' obj.pk %}">Editar</a>{% endif %}
+          {% if perms.ligas.delete_categoria %}<a class="btn danger" href="{% url 'ligas:categoria_delete' obj.pk %}">Eliminar</a>{% endif %}
+        </td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="4">No hay categorías.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% if is_paginated %}
+  <div class="pagination">
+    {% if page_obj.has_previous %}
+      <a href="?q={{ request.GET.q }}&page={{ page_obj.previous_page_number }}">« Anterior</a>
+    {% endif %}
+    <span class="current">Página {{ page_obj.number }} de {{ paginator.num_pages }}</span>
+    {% if page_obj.has_next %}
+      <a href="?q={{ request.GET.q }}&page={{ page_obj.next_page_number }}">Siguiente »</a>
+    {% endif %}
+  </div>
+  {% endif %}
+{% endblock %}

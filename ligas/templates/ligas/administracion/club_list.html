@@ -1,0 +1,44 @@
+{% extends 'ligas/base_admin.html' %}
+{% block title %}Clubes{% endblock %}
+{% block header %}Clubes{% endblock %}
+{% block breadcrumbs %}<a href="/">Inicio</a> / Administración / Clubes{% endblock %}
+{% block actions %}
+  <form method="get" class="searchbar" action="">
+    <input type="text" name="q" value="{{ request.GET.q }}" placeholder="Buscar...">
+    <button class="btn" type="submit">Buscar</button>
+  </form>
+  {% if perms.ligas.add_club %}
+    <a class="btn primary" href="{% url 'ligas:club_create' %}">Nuevo club</a>
+  {% endif %}
+{% endblock %}
+{% block content %}
+  <table>
+    <thead>
+      <tr><th>Nombre</th><th>Acciones</th></tr>
+    </thead>
+    <tbody>
+      {% for obj in object_list %}
+      <tr>
+        <td>{{ obj.nombre }}</td>
+        <td>
+          {% if perms.ligas.change_club %}<a class="btn" href="{% url 'ligas:club_update' obj.pk %}">Editar</a>{% endif %}
+          {% if perms.ligas.delete_club %}<a class="btn danger" href="{% url 'ligas:club_delete' obj.pk %}">Eliminar</a>{% endif %}
+        </td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="2">No hay clubes.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% if is_paginated %}
+  <div class="pagination">
+    {% if page_obj.has_previous %}
+      <a href="?q={{ request.GET.q }}&page={{ page_obj.previous_page_number }}">« Anterior</a>
+    {% endif %}
+    <span class="current">Página {{ page_obj.number }} de {{ paginator.num_pages }}</span>
+    {% if page_obj.has_next %}
+      <a href="?q={{ request.GET.q }}&page={{ page_obj.next_page_number }}">Siguiente »</a>
+    {% endif %}
+  </div>
+  {% endif %}
+{% endblock %}

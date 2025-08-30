@@ -1,0 +1,46 @@
+{% extends 'ligas/base_admin.html' %}
+{% block title %}Equipos{% endblock %}
+{% block header %}Equipos{% endblock %}
+{% block breadcrumbs %}<a href="/">Inicio</a> / Administración / Equipos{% endblock %}
+{% block actions %}
+  <form method="get" class="searchbar" action="">
+    <input type="text" name="q" value="{{ request.GET.q }}" placeholder="Buscar por club, categoría o alias...">
+    <button class="btn" type="submit">Buscar</button>
+  </form>
+  {% if perms.ligas.add_equipo %}
+    <a class="btn primary" href="{% url 'ligas:equipo_create' %}">Nuevo equipo</a>
+  {% endif %}
+{% endblock %}
+{% block content %}
+  <table>
+    <thead>
+      <tr><th>Club</th><th>Categoría</th><th>Alias</th><th>Acciones</th></tr>
+    </thead>
+    <tbody>
+      {% for obj in object_list %}
+      <tr>
+        <td>{{ obj.club }}</td>
+        <td>{{ obj.categoria }}</td>
+        <td>{{ obj.alias }}</td>
+        <td>
+          {% if perms.ligas.change_equipo %}<a class="btn" href="{% url 'ligas:equipo_update' obj.pk %}">Editar</a>{% endif %}
+          {% if perms.ligas.delete_equipo %}<a class="btn danger" href="{% url 'ligas:equipo_delete' obj.pk %}">Eliminar</a>{% endif %}
+        </td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="4">No hay equipos.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% if is_paginated %}
+  <div class="pagination">
+    {% if page_obj.has_previous %}
+      <a href="?q={{ request.GET.q }}&page={{ page_obj.previous_page_number }}">« Anterior</a>
+    {% endif %}
+    <span class="current">Página {{ page_obj.number }} de {{ paginator.num_pages }}</span>
+    {% if page_obj.has_next %}
+      <a href="?q={{ request.GET.q }}&page={{ page_obj.next_page_number }}">Siguiente »</a>
+    {% endif %}
+  </div>
+  {% endif %}
+{% endblock %}

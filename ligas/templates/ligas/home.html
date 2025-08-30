@@ -1,0 +1,40 @@
+{% extends 'ligas/base_admin.html' %}
+{% block title %}Inicio{% endblock %}
+{% block breadcrumbs %}<a href="/">Inicio</a>{% endblock %}
+{% block header %}{{ identity.site_title }}{% endblock %}
+{% block subtitle %}Bienvenido. Usá el menú lateral para navegar.{% endblock %}
+{% block content %}
+  <p>Accedé al panel de <a href="{% url 'ligas:admin_home' %}">Administración</a> para gestionar entidades.</p>
+  <p>Si no ves opciones, revisá tus permisos o iniciá sesión en <a href="/admin/login/">/admin/login/</a>.</p>
+
+  {% if identity.facebook_url or identity.instagram_url or identity.tiktok_url or identity.whatsapp_url or identity.twitter_url %}
+  <hr style="margin:16px 0;">
+  <div class="footer-social">
+    {% if identity.facebook_url %}
+      <a class="fb" href="{{ identity.facebook_url }}" target="_blank" rel="noopener noreferrer" aria-label="Facebook">
+        <img src="https://cdn.simpleicons.org/facebook/ffffff" width="16" height="16" alt="Facebook" />
+      </a>
+    {% endif %}
+    {% if identity.instagram_url %}
+      <a class="ig" href="{{ identity.instagram_url }}" target="_blank" rel="noopener noreferrer" aria-label="Instagram">
+        <img src="https://cdn.simpleicons.org/instagram/ffffff" width="16" height="16" alt="Instagram" />
+      </a>
+    {% endif %}
+    {% if identity.tiktok_url %}
+      <a class="tt" href="{{ identity.tiktok_url }}" target="_blank" rel="noopener noreferrer" aria-label="TikTok">
+        <img src="https://cdn.simpleicons.org/tiktok/ffffff" width="16" height="16" alt="TikTok" />
+      </a>
+    {% endif %}
+    {% if identity.whatsapp_url %}
+      <a class="wa" href="{{ identity.whatsapp_url }}" target="_blank" rel="noopener noreferrer" aria-label="WhatsApp">
+        <img src="https://cdn.simpleicons.org/whatsapp/ffffff" width="16" height="16" alt="WhatsApp" />
+      </a>
+    {% endif %}
+    {% if identity.twitter_url %}
+      <a class="tw" href="{{ identity.twitter_url }}" target="_blank" rel="noopener noreferrer" aria-label="Twitter">
+        <img src="https://cdn.simpleicons.org/x/ffffff" width="16" height="16" alt="Twitter/X" />
+      </a>
+    {% endif %}
+  </div>
+  {% endif %}
+{% endblock %}

@@ -1,0 +1,183 @@
+{% load static %}
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ identity.site_title }} - {% block title %}{% endblock %}</title>
+  <style>
+    :root{
+      --bg: {{ identity.sidebar_bg|default:'#111827' }};
+      --accent: {{ identity.accent_color|default:'#2563eb' }};
+    }
+  </style>
+  <link rel="stylesheet" href="{% static 'ligas/admin.css' %}">
+</head>
+<body>
+  <div class="layout">
+    <aside class="sidebar" id="sidebar">
+      <div class="collapse-row">
+        <div class="brand">
+          {% if identity.logo_url %}
+            <img src="{{ identity.logo_url }}" alt="Logo" class="logo" style="object-fit:contain; border-radius:6px;" />
+          {% else %}
+            <svg class="logo" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 6h16M4 12h16M4 18h16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+          {% endif %}
+          <span class="label hide-when-collapsed">Panel</span>
+        </div>
+        <button class="collapse-btn" id="collapseBtn" aria-label="Colapsar barra">≪</button>
+      </div>
+      <nav>
+        <button class="menu-root" id="adminRoot" aria-expanded="true">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M12 2l2.39 4.84L20 8l-4 3.9L17 18l-5-2.6L7 18l1-6.1L4 8l5.61-1.16L12 2z" stroke="currentColor" stroke-width="1.5" fill="currentColor"/>
+          </svg>
+          <span class="hide-when-collapsed">Administración</span>
+          <svg class="caret hide-when-collapsed" viewBox="0 0 24 24" width="18" height="18" xmlns="http://www.w3.org/2000/svg"><path d="M8 10l4 4 4-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        </button>
+        <div class="submenu" id="adminSubmenu">
+          {% if perms.ligas.view_club %}
+          <a href="{% url 'ligas:club_list' %}" class="{% if request.path|slice:':22' == '/administracion/clubes' %}active{% endif %}">
+            <svg class="icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M3 10l9-7 9 7v9a2 2 0 0 1-2 2h-4v-6H9v6H5a2 2 0 0 1-2-2v-9z" fill="currentColor"/></svg>
+            <span class="hide-when-collapsed">Clubes</span>
+          </a>
+          {% endif %}
+          {% if perms.ligas.view_torneo %}
+          <a href="{% url 'ligas:torneo_list' %}" class="{% if request.path|slice:':23' == '/administracion/torneos' %}active{% endif %}">
+            <svg class="icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M5 3h14v4a7 7 0 1 1-14 0V3zm2 18h10l-1-7H8l-1 7z" fill="currentColor"/></svg>
+            <span class="hide-when-collapsed">Torneos</span>
+          </a>
+          {% endif %}
+          {% if perms.ligas.view_ronda %}
+          <a href="{% url 'ligas:ronda_list' %}" class="{% if request.path|slice:':21' == '/administracion/rondas' %}active{% endif %}">
+            <svg class="icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="9" fill="currentColor"/></svg>
+            <span class="hide-when-collapsed">Rondas</span>
+          </a>
+          {% endif %}
+          {% if perms.ligas.view_categoria %}
+          <a href="{% url 'ligas:categoria_list' %}" class="{% if request.path|slice:':25' == '/administracion/categorias' %}active{% endif %}">
+            <svg class="icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M4 4h7v7H4V4zm9 0h7v7h-7V4zM4 13h7v7H4v-7zm9 0h7v7h-7v-7z" fill="currentColor"/></svg>
+            <span class="hide-when-collapsed">Categorías</span>
+          </a>
+          {% endif %}
+          {% if perms.ligas.view_equipo %}
+          <a href="{% url 'ligas:equipo_list' %}" class="{% if request.path|slice:':22' == '/administracion/equipos' %}active{% endif %}">
+            <svg class="icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 3l8 4v10l-8 4-8-4V7l8-4z" fill="currentColor"/></svg>
+            <span class="hide-when-collapsed">Equipos</span>
+          </a>
+          {% endif %}
+          {% if perms.ligas.view_jugador %}
+          <a href="{% url 'ligas:jugador_list' %}" class="{% if request.path|slice:':24' == '/administracion/jugadores' %}active{% endif %}">
+            <svg class="icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 12a5 5 0 1 0-5-5 5 5 0 0 0 5 5zm0 2c-4.418 0-8 2.239-8 5v1h16v-1c0-2.761-3.582-5-8-5z" fill="currentColor"/></svg>
+            <span class="hide-when-collapsed">Jugadores</span>
+          </a>
+          {% endif %}
+          {% if perms.ligas.view_arbitro %}
+          <a href="{% url 'ligas:arbitro_list' %}" class="{% if request.path|slice:':23' == '/administracion/arbitros' %}active{% endif %}">
+            <svg class="icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M7 3h10v12H7zM5 17h14v4H5z" fill="currentColor"/></svg>
+            <span class="hide-when-collapsed">Árbitros</span>
+          </a>
+          {% endif %}
+        </div>
+        {% if perms.ligas.change_siteidentity %}
+        <button class="menu-root" id="configRoot" aria-expanded="true">
+          <svg class="icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M19.4 13a7.96 7.96 0 0 0 .06-1 7.96 7.96 0 0 0-.06-1l2.11-1.65a.5.5 0 0 0 .12-.64l-2-3.46a.5.5 0 0 0-.6-.22l-2.49 1a7.28 7.28 0 0 0-1.73-1L14.5 2.5a.5.5 0 0 0-.5-.5h-4a.5.5 0 0 0-.5.5L9 4.03a7.28 7.28 0 0 0-1.73 1l-2.49-1a.5.5 0 0 0-.6.22l-2 3.46a.5.5 0 0 0 .12.64L4.4 11a7.96 7.96 0 0 0-.06 1 7.96 7.96 0 0 0 .06 1l-2.11 1.65a.5.5 0 0 0-.12.64l2 3.46a.5.5 0 0 0 .6.22l2.49-1c.53.42 1.11.77 1.73 1L9.5 21.5a.5.5 0 0 0 .5.5h4a.5.5 0 0 0 .5-.5l.5-1.53c.62-.23 1.2-.58 1.73-1l2.49 1a.5.5 0 0 0 .6-.22l2-3.46a.5.5 0 0 0-.12-.64L19.4 13zM12 15.5A3.5 3.5 0 1 1 15.5 12 3.5 3.5 0 0 1 12 15.5z" fill="currentColor"/></svg>
+          <span class="hide-when-collapsed">Configuración</span>
+          <svg class="caret hide-when-collapsed" viewBox="0 0 24 24" width="18" height="18" xmlns="http://www.w3.org/2000/svg"><path d="M8 10l4 4 4-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        </button>
+        <div class="submenu" id="configSubmenu">
+          {% if perms.ligas.change_siteidentity %}
+          <a href="{% url 'ligas:identidad' %}" class="{% if request.path|slice:':25' == '/configuracion/identidad' %}active{% endif %}">
+            <svg class="icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 7a5 5 0 1 1-5 5 5 5 0 0 1 5-5m0-3a8 8 0 1 0 8 8 8 8 0 0 0-8-8Z" fill="currentColor"/></svg>
+            <span class="hide-when-collapsed">Identidad</span>
+          </a>
+          {% endif %}
+        </div>
+        {% endif %}
+      </nav>
+      <div style="margin-top:auto;">
+        <a href="/" class="muted" style="text-decoration:none; color:#9ca3af;">← Volver al inicio</a>
+      </div>
+    </aside>
+    <main class="content">
+      <div class="topbar">
+        <div>
+          <div class="breadcrumbs">{% block breadcrumbs %}{% endblock %}</div>
+          <h1 style="margin:0;">{% block header %}{% endblock %}</h1>
+          <div class="muted">{% block subtitle %}{% endblock %}</div>
+        </div>
+        <div>
+          {% block actions %}{% endblock %}
+        </div>
+      </div>
+      <section class="card">
+        {% block content %}{% endblock %}
+      </section>
+    </main>
+  </div>
+  <script>
+    (function(){
+      const sidebar = document.getElementById('sidebar');
+      const collapseBtn = document.getElementById('collapseBtn');
+      const adminRoot = document.getElementById('adminRoot');
+      const adminSubmenu = document.getElementById('adminSubmenu');
+      const configRoot = document.getElementById('configRoot');
+      const configSubmenu = document.getElementById('configSubmenu');
+
+      // Estado inicial desde localStorage
+      const collapsed = localStorage.getItem('sidebarCollapsed') === '1';
+      if (collapsed) sidebar.classList.add('collapsed');
+
+      // Abrir submenu por defecto si estamos en /administracion/
+      const path = window.location.pathname || '';
+      let submenuOpen = localStorage.getItem('adminSubmenuOpen');
+      if (submenuOpen === null) {
+        submenuOpen = path.indexOf('/administracion/') === 0 ? '1' : '0';
+      }
+      if (submenuOpen === '1') adminSubmenu.classList.add('open');
+      adminRoot.setAttribute('aria-expanded', adminSubmenu.classList.contains('open'));
+
+      if (configRoot && configSubmenu) {
+        let cfgOpen = localStorage.getItem('configSubmenuOpen');
+        if (cfgOpen === null) {
+          cfgOpen = path.indexOf('/configuracion/') === 0 ? '1' : '0';
+        }
+        if (cfgOpen === '1') configSubmenu.classList.add('open');
+        configRoot.setAttribute('aria-expanded', configSubmenu.classList.contains('open'));
+      }
+
+      collapseBtn.addEventListener('click', function(){
+        sidebar.classList.toggle('collapsed');
+        localStorage.setItem('sidebarCollapsed', sidebar.classList.contains('collapsed') ? '1' : '0');
+      });
+
+      adminRoot.addEventListener('click', function(){
+        if (sidebar.classList.contains('collapsed')) {
+          // Primero expandimos la barra si está colapsada
+          sidebar.classList.remove('collapsed');
+          localStorage.setItem('sidebarCollapsed', '0');
+        } else {
+          adminSubmenu.classList.toggle('open');
+          const open = adminSubmenu.classList.contains('open');
+          adminRoot.setAttribute('aria-expanded', open);
+          localStorage.setItem('adminSubmenuOpen', open ? '1' : '0');
+        }
+      });
+
+      if (configRoot && configSubmenu) {
+        configRoot.addEventListener('click', function(){
+          if (sidebar.classList.contains('collapsed')) {
+            sidebar.classList.remove('collapsed');
+            localStorage.setItem('sidebarCollapsed', '0');
+          } else {
+            configSubmenu.classList.toggle('open');
+            const open = configSubmenu.classList.contains('open');
+            configRoot.setAttribute('aria-expanded', open);
+            localStorage.setItem('configSubmenuOpen', open ? '1' : '0');
+          }
+        });
+      }
+    })();
+  </script>
+</body>
+</html>

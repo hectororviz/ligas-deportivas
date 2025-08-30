@@ -1,0 +1,104 @@
+{% extends 'ligas/base_admin.html' %}
+{% block title %}Configuración{% endblock %}
+{% block breadcrumbs %}<a href="/">Inicio</a> / Configuración / Identidad{% endblock %}
+{% block header %}Identidad del sitio{% endblock %}
+{% block subtitle %}Personalizá colores, título y logo del panel.{% endblock %}
+{% block content %}
+  <form method="post">{% csrf_token %}
+    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:16px; align-items:start;">
+      <div>
+        <label>Título del sitio</label>
+        {{ form.site_title }}
+        <small class="muted">Se usa en la ventana y en el Home.</small>
+      </div>
+      <div>
+        <label>Logo (URL)</label>
+        {{ form.logo_url }}
+        <small class="muted">Máximo recomendado: 300x300. Se muestra arriba de “Panel”.</small>
+      </div>
+      <div style="grid-column: 1 / span 2; display:flex; gap:16px; align-items:center;">
+        <div style="flex:1;">
+          <label style="display:block;">Color lateral (HEX)</label>
+          <div style="display:flex; gap:8px; align-items:center;">
+            <input type="color" id="pick_sidebar_bg" value="{{ form.sidebar_bg.value|default:'#111827' }}" style="width:44px; height:36px; padding:0; border:none; background:none;">
+            {{ form.sidebar_bg }}
+          </div>
+          <small class="muted">Ejemplo: #111827</small>
+        </div>
+        <div style="flex:1;">
+          <label style="display:block;">Color secundario (HEX)</label>
+          <div style="display:flex; gap:8px; align-items:center;">
+            <input type="color" id="pick_accent_color" value="{{ form.accent_color.value|default:'#2563eb' }}" style="width:44px; height:36px; padding:0; border:none; background:none;">
+            {{ form.accent_color }}
+          </div>
+          <small class="muted">Para resaltar botones y elementos activos.</small>
+        </div>
+      </div>
+    </div>
+
+    <hr style="margin:16px 0;">
+    <h3 style="margin:0 0 8px;">Redes sociales</h3>
+    <div class="card" style="padding:12px;">
+      <div class="social-table">
+        <div class="row">
+          <div class="cell icon">
+            <img src="https://cdn.simpleicons.org/facebook/1877F2" width="20" height="20" alt="Facebook" />
+          </div>
+          <div class="cell">Facebook</div>
+          <div class="cell input">{{ form.facebook_url }}</div>
+        </div>
+        <div class="row">
+          <div class="cell icon">
+            <img src="https://cdn.simpleicons.org/instagram/E4405F" width="20" height="20" alt="Instagram" />
+          </div>
+          <div class="cell">Instagram</div>
+          <div class="cell input">{{ form.instagram_url }}</div>
+        </div>
+        <div class="row">
+          <div class="cell icon">
+            <img src="https://cdn.simpleicons.org/tiktok/000000" width="20" height="20" alt="TikTok" />
+          </div>
+          <div class="cell">TikTok</div>
+          <div class="cell input">{{ form.tiktok_url }}</div>
+        </div>
+        <div class="row">
+          <div class="cell icon">
+            <img src="https://cdn.simpleicons.org/whatsapp/25D366" width="20" height="20" alt="WhatsApp" />
+          </div>
+          <div class="cell">WhatsApp</div>
+          <div class="cell input">{{ form.whatsapp_url }}</div>
+        </div>
+        <div class="row">
+          <div class="cell icon">
+            <img src="https://cdn.simpleicons.org/x/1DA1F2" width="20" height="20" alt="Twitter/X" />
+          </div>
+          <div class="cell">Twitter</div>
+          <div class="cell input">{{ form.twitter_url }}</div>
+        </div>
+      </div>
+    </div>
+    {% if form.errors %}
+      <div style="color:#b91c1c; margin-top:12px;">Revisá los campos marcados.</div>
+    {% endif %}
+    <div style="margin-top:16px; display:flex; gap:8px;">
+      <button class="btn primary" type="submit">Guardar</button>
+      <a class="btn" href="/">Cancelar</a>
+    </div>
+  </form>
+  <script>
+    (function(){
+      const pick1 = document.getElementById('pick_sidebar_bg');
+      const pick2 = document.getElementById('pick_accent_color');
+      const input1 = document.getElementById('id_sidebar_bg');
+      const input2 = document.getElementById('id_accent_color');
+      if (pick1 && input1) {
+        pick1.addEventListener('input', ()=>{ input1.value = pick1.value; });
+        input1.addEventListener('input', ()=>{ pick1.value = input1.value; });
+      }
+      if (pick2 && input2) {
+        pick2.addEventListener('input', ()=>{ input2.value = pick2.value; });
+        input2.addEventListener('input', ()=>{ pick2.value = input2.value; });
+      }
+    })();
+  </script>
+{% endblock %}
