@@ -30,14 +30,14 @@ class RondaAdmin(admin.ModelAdmin):
 
 @admin.register(Categoria)
 class CategoriaAdmin(admin.ModelAdmin):
-    list_display = ("nombre", "torneo", "activa", "suma_puntos_general", "horario")
-    list_filter = ("torneo__liga__temporada", "torneo__nombre", "activa", "suma_puntos_general")
+    list_display = ("nombre", "liga", "activa", "suma_puntos_general", "horario")
+    list_filter = ("liga__temporada", "liga__nombre", "activa", "suma_puntos_general")
     search_fields = ("nombre",)
 
 @admin.register(Equipo)
 class EquipoAdmin(admin.ModelAdmin):
     list_display = ("club", "categoria", "alias")
-    list_filter = ("categoria__torneo__liga__temporada", "categoria__nombre", "club__nombre")
+    list_filter = ("categoria__liga__temporada", "categoria__nombre", "club__nombre")
     search_fields = ("club__nombre", "alias")
 
 @admin.register(Jugador)
@@ -60,7 +60,7 @@ class FechaAdmin(admin.ModelAdmin):
 @admin.register(Partido)
 class PartidoAdmin(admin.ModelAdmin):
     list_display = ("fecha_ref", "categoria", "local", "visitante", "goles_local", "goles_visitante", "jugado")
-    list_filter = ("categoria__torneo__liga__temporada", "categoria__nombre", "jugado")
+    list_filter = ("categoria__liga__temporada", "categoria__nombre", "jugado")
     search_fields = ("local__club__nombre", "visitante__club__nombre")
     autocomplete_fields = ("arbitro", "local", "visitante", "categoria")
 
@@ -77,5 +77,5 @@ class ReglaPuntosAdmin(admin.ModelAdmin):
 @admin.register(TablaPosicion)
 class TablaPosicionAdmin(admin.ModelAdmin):
     list_display = ("categoria", "equipo", "puntos", "pj", "pg", "pe", "pp", "gf", "gc")
-    list_filter = ("categoria__torneo__liga__temporada", "categoria__nombre")
+    list_filter = ("categoria__liga__temporada", "categoria__nombre")
     search_fields = ("equipo__club__nombre",)

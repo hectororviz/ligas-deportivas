@@ -1,33 +1,34 @@
 {% extends 'ligas/base_admin.html' %}
-{% block title %}Clubes{% endblock %}
-{% block header %}Clubes{% endblock %}
-{% block breadcrumbs %}<a href="/">Inicio</a> / Administración / Clubes{% endblock %}
+{% block title %}Ligas{% endblock %}
+{% block header %}Ligas{% endblock %}
+{% block breadcrumbs %}<a href="/">Inicio</a> / Administración / Ligas{% endblock %}
 {% block actions %}
   <form method="get" class="searchbar" action="">
-    <input type="text" name="q" value="{{ request.GET.q }}" placeholder="Buscar...">
+    <input type="text" name="q" value="{{ request.GET.q }}" placeholder="Buscar por nombre o temporada...">
     <button class="btn" type="submit">Buscar</button>
   </form>
-  {% if perms.ligas.add_club %}
-    <a class="btn primary js-open-modal" data-modal-title="Nuevo club" href="{% url 'ligas:club_create' %}">Nuevo club</a>
+  {% if perms.ligas.add_liga %}
+    <a class="btn primary js-open-modal" data-modal-title="Nueva liga" href="{% url 'ligas:liga_create' %}">Nueva liga</a>
   {% endif %}
 {% endblock %}
 {% block content %}
   <div id="listContainer">
   <table>
     <thead>
-      <tr><th>Nombre</th><th>Acciones</th></tr>
+      <tr><th>Nombre</th><th>Temporada</th><th>Acciones</th></tr>
     </thead>
     <tbody>
       {% for obj in object_list %}
       <tr>
         <td>{{ obj.nombre }}</td>
+        <td>{{ obj.temporada }}</td>
         <td>
-          {% if perms.ligas.change_club %}<a class="btn js-open-modal" data-modal-title="Editar club" href="{% url 'ligas:club_update' obj.pk %}">Editar</a>{% endif %}
-          {% if perms.ligas.delete_club %}<a class="btn danger js-open-modal" data-modal-title="Eliminar club" href="{% url 'ligas:club_delete' obj.pk %}">Eliminar</a>{% endif %}
+          {% if perms.ligas.change_liga %}<a class="btn js-open-modal" data-modal-title="Editar liga" href="{% url 'ligas:liga_update' obj.pk %}">Editar</a>{% endif %}
+          {% if perms.ligas.delete_liga %}<a class="btn danger js-open-modal" data-modal-title="Eliminar liga" href="{% url 'ligas:liga_delete' obj.pk %}">Eliminar</a>{% endif %}
         </td>
       </tr>
       {% empty %}
-      <tr><td colspan="2">No hay clubes.</td></tr>
+      <tr><td colspan="3">No hay ligas.</td></tr>
       {% endfor %}
     </tbody>
   </table>
@@ -44,3 +45,4 @@
   {% endif %}
   </div>
 {% endblock %}
+

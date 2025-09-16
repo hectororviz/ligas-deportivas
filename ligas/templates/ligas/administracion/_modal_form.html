@@ -1,0 +1,9 @@
+<form method="post" action="{{ request.get_full_path }}">
+  {% csrf_token %}
+  {{ form.as_p }}
+  <div style="margin-top:12px; display:flex; gap:8px;">
+    <button class="btn primary" type="submit">Guardar</button>
+    <button class="btn" type="submit" name="add_another" value="1">Guardar y agregar otro</button>
+    <button class="btn" type="button" data-modal-close>Cancelar</button>
+  </div>
+</form>

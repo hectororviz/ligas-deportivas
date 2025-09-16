@@ -1,0 +1,51 @@
+{% extends 'ligas/base_admin.html' %}
+{% block title %}Equipo{% endblock %}
+{% block header %}Equipo: {{ object.club }} — {{ object.categoria.nombre }}{% endblock %}
+{% block breadcrumbs %}
+  <a href="/">Inicio</a> / Administración / <a href="{% url 'ligas:equipo_list' %}">Equipos</a> / Detalles
+{% endblock %}
+{% block actions %}
+  <a class="btn" href="{% url 'ligas:equipo_list' %}">Volver</a>
+  {% if perms.ligas.add_jugador %}
+    <a class="btn primary js-open-modal" data-modal-title="Nuevo jugador" href="{% url 'ligas:jugador_create' %}?equipo={{ object.pk }}">Nuevo jugador</a>
+  {% endif %}
+{% endblock %}
+{% block content %}
+  <div class="card" style="margin-bottom:16px;">
+    <div><strong>Club:</strong> {{ object.club }}</div>
+    <div><strong>Categoría:</strong> {{ object.categoria }}</div>
+    {% if object.alias %}<div><strong>Alias:</strong> {{ object.alias }}</div>{% endif %}
+  </div>
+
+  <div class="card" id="listContainer">
+    <h3 style="margin-top:0;">Jugadores</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Apellido</th>
+          <th>Nombre</th>
+          <th>DNI</th>
+          <th>Fecha de nacimiento</th>
+          <th>Acciones</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for j in jugadores %}
+        <tr>
+          <td>{{ j.apellido }}</td>
+          <td>{{ j.nombre }}</td>
+          <td>{{ j.dni }}</td>
+          <td>{{ j.fecha_nac }}</td>
+          <td>
+            {% if perms.ligas.change_jugador %}
+              <a class="btn js-open-modal" data-modal-title="Editar jugador" href="{% url 'ligas:jugador_update' j.pk %}">Editar</a>
+            {% endif %}
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="5">No hay jugadores cargados.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% endblock %}

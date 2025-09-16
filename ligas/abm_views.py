@@ -2,8 +2,9 @@ from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMix
 from django.db.models import Q
 from django.urls import reverse_lazy
 from django.views.generic import TemplateView, ListView, CreateView, UpdateView, DeleteView
+from django.views.generic.detail import DetailView
 
-from .models import Club, Torneo, Ronda, Categoria, Equipo, Jugador, Arbitro, SiteIdentity
+from .models import Club, Liga, Torneo, Ronda, Categoria, Equipo, Jugador, Arbitro, SiteIdentity
 from django.views.generic.edit import UpdateView
 from django.contrib import messages
 from django.shortcuts import redirect
@@ -19,6 +20,40 @@ class AdminBaseView(LoginRequiredMixin):
 class AdminHomeView(AdminBaseView, TemplateView):
     template_name = "ligas/administracion/index.html"
 
+
+class AjaxTemplateMixin:
+    """Render a lightweight template when requested via AJAX for modal use."""
+    ajax_template_name = None
+
+    def get_template_names(self):
+        template_names = super().get_template_names()
+        is_ajax = self.request.headers.get("x-requested-with") == "XMLHttpRequest"
+        if is_ajax and self.ajax_template_name:
+            return [self.ajax_template_name]
+        return template_names
+
+
+class AjaxCreateMixin(AjaxTemplateMixin):
+    """Enhances CreateView to support 'save and add another' in AJAX modals."""
+    def form_valid(self, form):
+        is_ajax = self.request.headers.get("x-requested-with") == "XMLHttpRequest"
+        add_another = bool(self.request.POST.get("add_another"))
+        # Save object first
+        self.object = form.save()
+        if is_ajax and add_another:
+            # Return an empty form to keep adding
+            form_class = self.get_form_class()
+            new_form = form_class(initial=self.get_initial())
+            context = self.get_context_data(form=new_form)
+            response = self.render_to_response(context)
+            try:
+                response["X-Add-Another-Success"] = "1"
+                response["X-List-Url"] = self.get_success_url()
+            except Exception:
+                pass
+            return response
+        # Default behavior (redirect) – JS will detect and reload
+        return super(AjaxTemplateMixin, self).form_valid(form)
 
 # ========
 # CLUB
@@ -37,26 +72,29 @@ class ClubListView(AdminBaseView, PermissionRequiredMixin, ListView):
         return qs
 
 
-class ClubCreateView(AdminBaseView, PermissionRequiredMixin, CreateView):
+class ClubCreateView(AjaxCreateMixin, AdminBaseView, PermissionRequiredMixin, CreateView):
     permission_required = "ligas.add_club"
     model = Club
     fields = ["nombre", "escudo_url", "direccion"]
     template_name = "ligas/administracion/form.html"
+    ajax_template_name = "ligas/administracion/_modal_form.html"
     success_url = reverse_lazy("ligas:club_list")
 
 
-class ClubUpdateView(AdminBaseView, PermissionRequiredMixin, UpdateView):
+class ClubUpdateView(AjaxTemplateMixin, AdminBaseView, PermissionRequiredMixin, UpdateView):
     permission_required = "ligas.change_club"
     model = Club
     fields = ["nombre", "escudo_url", "direccion"]
     template_name = "ligas/administracion/form.html"
+    ajax_template_name = "ligas/administracion/_modal_form.html"
     success_url = reverse_lazy("ligas:club_list")
 
 
-class ClubDeleteView(AdminBaseView, PermissionRequiredMixin, DeleteView):
+class ClubDeleteView(AjaxTemplateMixin, AdminBaseView, PermissionRequiredMixin, DeleteView):
     permission_required = "ligas.delete_club"
     model = Club
     template_name = "ligas/administracion/confirm_delete.html"
+    ajax_template_name = "ligas/administracion/_modal_confirm_delete.html"
     success_url = reverse_lazy("ligas:club_list")
 
 
@@ -77,26 +115,29 @@ class TorneoListView(AdminBaseView, PermissionRequiredMixin, ListView):
         return qs
 
 
-class TorneoCreateView(AdminBaseView, PermissionRequiredMixin, CreateView):
+class TorneoCreateView(AjaxCreateMixin, AdminBaseView, PermissionRequiredMixin, CreateView):
     permission_required = "ligas.add_torneo"
     model = Torneo
     fields = ["liga", "nombre"]
     template_name = "ligas/administracion/form.html"
+    ajax_template_name = "ligas/administracion/_modal_form.html"
     success_url = reverse_lazy("ligas:torneo_list")
 
 
-class TorneoUpdateView(AdminBaseView, PermissionRequiredMixin, UpdateView):
+class TorneoUpdateView(AjaxTemplateMixin, AdminBaseView, PermissionRequiredMixin, UpdateView):
     permission_required = "ligas.change_torneo"
     model = Torneo
     fields = ["liga", "nombre"]
     template_name = "ligas/administracion/form.html"
+    ajax_template_name = "ligas/administracion/_modal_form.html"
     success_url = reverse_lazy("ligas:torneo_list")
 
 
-class TorneoDeleteView(AdminBaseView, PermissionRequiredMixin, DeleteView):
+class TorneoDeleteView(AjaxTemplateMixin, AdminBaseView, PermissionRequiredMixin, DeleteView):
     permission_required = "ligas.delete_torneo"
     model = Torneo
     template_name = "ligas/administracion/confirm_delete.html"
+    ajax_template_name = "ligas/administracion/_modal_confirm_delete.html"
     success_url = reverse_lazy("ligas:torneo_list")
 
 
@@ -117,26 +158,29 @@ class RondaListView(AdminBaseView, PermissionRequiredMixin, ListView):
         return qs
 
 
-class RondaCreateView(AdminBaseView, PermissionRequiredMixin, CreateView):
+class RondaCreateView(AjaxCreateMixin, AdminBaseView, PermissionRequiredMixin, CreateView):
     permission_required = "ligas.add_ronda"
     model = Ronda
     fields = ["torneo", "nombre"]
     template_name = "ligas/administracion/form.html"
+    ajax_template_name = "ligas/administracion/_modal_form.html"
     success_url = reverse_lazy("ligas:ronda_list")
 
 
-class RondaUpdateView(AdminBaseView, PermissionRequiredMixin, UpdateView):
+class RondaUpdateView(AjaxTemplateMixin, AdminBaseView, PermissionRequiredMixin, UpdateView):
     permission_required = "ligas.change_ronda"
     model = Ronda
     fields = ["torneo", "nombre"]
     template_name = "ligas/administracion/form.html"
+    ajax_template_name = "ligas/administracion/_modal_form.html"
     success_url = reverse_lazy("ligas:ronda_list")
 
 
-class RondaDeleteView(AdminBaseView, PermissionRequiredMixin, DeleteView):
+class RondaDeleteView(AjaxTemplateMixin, AdminBaseView, PermissionRequiredMixin, DeleteView):
     permission_required = "ligas.delete_ronda"
     model = Ronda
     template_name = "ligas/administracion/confirm_delete.html"
+    ajax_template_name = "ligas/administracion/_modal_confirm_delete.html"
     success_url = reverse_lazy("ligas:ronda_list")
 
 
@@ -150,33 +194,36 @@ class CategoriaListView(AdminBaseView, PermissionRequiredMixin, ListView):
     paginate_by = 10
 
     def get_queryset(self):
-        qs = super().get_queryset().select_related("torneo", "torneo__liga")
+        qs = super().get_queryset().select_related("liga")
         q = self.request.GET.get("q", "").strip()
         if q:
-            qs = qs.filter(Q(nombre__icontains=q) | Q(torneo__nombre__icontains=q) | Q(torneo__liga__nombre__icontains=q))
+            qs = qs.filter(Q(nombre__icontains=q) | Q(liga__nombre__icontains=q) | Q(liga__temporada__icontains=q))
         return qs
 
 
-class CategoriaCreateView(AdminBaseView, PermissionRequiredMixin, CreateView):
+class CategoriaCreateView(AjaxCreateMixin, AdminBaseView, PermissionRequiredMixin, CreateView):
     permission_required = "ligas.add_categoria"
     model = Categoria
-    fields = ["torneo", "nombre", "horario", "activa", "suma_puntos_general"]
+    fields = ["liga", "nombre", "horario", "activa", "suma_puntos_general"]
     template_name = "ligas/administracion/form.html"
+    ajax_template_name = "ligas/administracion/_modal_form.html"
     success_url = reverse_lazy("ligas:categoria_list")
 
 
-class CategoriaUpdateView(AdminBaseView, PermissionRequiredMixin, UpdateView):
+class CategoriaUpdateView(AjaxTemplateMixin, AdminBaseView, PermissionRequiredMixin, UpdateView):
     permission_required = "ligas.change_categoria"
     model = Categoria
-    fields = ["torneo", "nombre", "horario", "activa", "suma_puntos_general"]
+    fields = ["liga", "nombre", "horario", "activa", "suma_puntos_general"]
     template_name = "ligas/administracion/form.html"
+    ajax_template_name = "ligas/administracion/_modal_form.html"
     success_url = reverse_lazy("ligas:categoria_list")
 
 
-class CategoriaDeleteView(AdminBaseView, PermissionRequiredMixin, DeleteView):
+class CategoriaDeleteView(AjaxTemplateMixin, AdminBaseView, PermissionRequiredMixin, DeleteView):
     permission_required = "ligas.delete_categoria"
     model = Categoria
     template_name = "ligas/administracion/confirm_delete.html"
+    ajax_template_name = "ligas/administracion/_modal_confirm_delete.html"
     success_url = reverse_lazy("ligas:categoria_list")
 
 
@@ -190,33 +237,47 @@ class EquipoListView(AdminBaseView, PermissionRequiredMixin, ListView):
     paginate_by = 10
 
     def get_queryset(self):
-        qs = super().get_queryset().select_related("club", "categoria", "categoria__torneo")
+        qs = super().get_queryset().select_related("club", "categoria", "categoria__liga")
         q = self.request.GET.get("q", "").strip()
         if q:
             qs = qs.filter(Q(club__nombre__icontains=q) | Q(categoria__nombre__icontains=q) | Q(alias__icontains=q))
         return qs
 
 
-class EquipoCreateView(AdminBaseView, PermissionRequiredMixin, CreateView):
+class EquipoCreateView(AjaxCreateMixin, AdminBaseView, PermissionRequiredMixin, CreateView):
     permission_required = "ligas.add_equipo"
     model = Equipo
     fields = ["club", "categoria", "alias"]
     template_name = "ligas/administracion/form.html"
+    ajax_template_name = "ligas/administracion/_modal_form.html"
     success_url = reverse_lazy("ligas:equipo_list")
 
 
-class EquipoUpdateView(AdminBaseView, PermissionRequiredMixin, UpdateView):
+class EquipoDetailView(AdminBaseView, PermissionRequiredMixin, DetailView):
+    permission_required = "ligas.view_equipo"
+    model = Equipo
+    template_name = "ligas/administracion/equipo_detail.html"
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        # Prefetch jugadores for display
+        ctx["jugadores"] = self.object.jugadores.all().order_by("apellido", "nombre")
+        return ctx
+
+class EquipoUpdateView(AjaxTemplateMixin, AdminBaseView, PermissionRequiredMixin, UpdateView):
     permission_required = "ligas.change_equipo"
     model = Equipo
     fields = ["club", "categoria", "alias"]
     template_name = "ligas/administracion/form.html"
+    ajax_template_name = "ligas/administracion/_modal_form.html"
     success_url = reverse_lazy("ligas:equipo_list")
 
 
-class EquipoDeleteView(AdminBaseView, PermissionRequiredMixin, DeleteView):
+class EquipoDeleteView(AjaxTemplateMixin, AdminBaseView, PermissionRequiredMixin, DeleteView):
     permission_required = "ligas.delete_equipo"
     model = Equipo
     template_name = "ligas/administracion/confirm_delete.html"
+    ajax_template_name = "ligas/administracion/_modal_confirm_delete.html"
     success_url = reverse_lazy("ligas:equipo_list")
 
 
@@ -237,26 +298,39 @@ class JugadorListView(AdminBaseView, PermissionRequiredMixin, ListView):
         return qs
 
 
-class JugadorCreateView(AdminBaseView, PermissionRequiredMixin, CreateView):
+class JugadorCreateView(AjaxCreateMixin, AdminBaseView, PermissionRequiredMixin, CreateView):
     permission_required = "ligas.add_jugador"
     model = Jugador
     fields = ["equipo", "apellido", "nombre", "dni", "fecha_nac"]
     template_name = "ligas/administracion/form.html"
+    ajax_template_name = "ligas/administracion/_modal_form.html"
     success_url = reverse_lazy("ligas:jugador_list")
 
+    def get_initial(self):
+        initial = super().get_initial()
+        equipo_id = self.request.GET.get("equipo")
+        if equipo_id:
+            try:
+                initial["equipo"] = Equipo.objects.get(pk=equipo_id)
+            except Equipo.DoesNotExist:
+                pass
+        return initial
 
-class JugadorUpdateView(AdminBaseView, PermissionRequiredMixin, UpdateView):
+
+class JugadorUpdateView(AjaxTemplateMixin, AdminBaseView, PermissionRequiredMixin, UpdateView):
     permission_required = "ligas.change_jugador"
     model = Jugador
     fields = ["equipo", "apellido", "nombre", "dni", "fecha_nac"]
     template_name = "ligas/administracion/form.html"
+    ajax_template_name = "ligas/administracion/_modal_form.html"
     success_url = reverse_lazy("ligas:jugador_list")
 
 
-class JugadorDeleteView(AdminBaseView, PermissionRequiredMixin, DeleteView):
+class JugadorDeleteView(AjaxTemplateMixin, AdminBaseView, PermissionRequiredMixin, DeleteView):
     permission_required = "ligas.delete_jugador"
     model = Jugador
     template_name = "ligas/administracion/confirm_delete.html"
+    ajax_template_name = "ligas/administracion/_modal_confirm_delete.html"
     success_url = reverse_lazy("ligas:jugador_list")
 
 
@@ -277,26 +351,29 @@ class ArbitroListView(AdminBaseView, PermissionRequiredMixin, ListView):
         return qs
 
 
-class ArbitroCreateView(AdminBaseView, PermissionRequiredMixin, CreateView):
+class ArbitroCreateView(AjaxCreateMixin, AdminBaseView, PermissionRequiredMixin, CreateView):
     permission_required = "ligas.add_arbitro"
     model = Arbitro
     fields = ["apellido", "nombre"]
     template_name = "ligas/administracion/form.html"
+    ajax_template_name = "ligas/administracion/_modal_form.html"
     success_url = reverse_lazy("ligas:arbitro_list")
 
 
-class ArbitroUpdateView(AdminBaseView, PermissionRequiredMixin, UpdateView):
+class ArbitroUpdateView(AjaxTemplateMixin, AdminBaseView, PermissionRequiredMixin, UpdateView):
     permission_required = "ligas.change_arbitro"
     model = Arbitro
     fields = ["apellido", "nombre"]
     template_name = "ligas/administracion/form.html"
+    ajax_template_name = "ligas/administracion/_modal_form.html"
     success_url = reverse_lazy("ligas:arbitro_list")
 
 
-class ArbitroDeleteView(AdminBaseView, PermissionRequiredMixin, DeleteView):
+class ArbitroDeleteView(AjaxTemplateMixin, AdminBaseView, PermissionRequiredMixin, DeleteView):
     permission_required = "ligas.delete_arbitro"
     model = Arbitro
     template_name = "ligas/administracion/confirm_delete.html"
+    ajax_template_name = "ligas/administracion/_modal_confirm_delete.html"
     success_url = reverse_lazy("ligas:arbitro_list")
 
 
@@ -330,3 +407,44 @@ class IdentidadView(AdminBaseView, PermissionRequiredMixin, UpdateView):
         except (OperationalError, ProgrammingError):
             messages.error(request, "Faltan migraciones para 'Identidad'. Ejecutá: python manage.py migrate")
             return redirect("ligas:admin_home")
+# ========
+# LIGA
+# ========
+class LigaListView(AdminBaseView, PermissionRequiredMixin, ListView):
+    permission_required = "ligas.view_liga"
+    model = Liga
+    template_name = "ligas/administracion/liga_list.html"
+    paginate_by = 10
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        q = self.request.GET.get("q", "").strip()
+        if q:
+            qs = qs.filter(Q(nombre__icontains=q) | Q(temporada__icontains=q))
+        return qs
+
+
+class LigaCreateView(AjaxCreateMixin, AdminBaseView, PermissionRequiredMixin, CreateView):
+    permission_required = "ligas.add_liga"
+    model = Liga
+    fields = ["nombre", "temporada"]
+    template_name = "ligas/administracion/form.html"
+    ajax_template_name = "ligas/administracion/_modal_form.html"
+    success_url = reverse_lazy("ligas:liga_list")
+
+
+class LigaUpdateView(AjaxTemplateMixin, AdminBaseView, PermissionRequiredMixin, UpdateView):
+    permission_required = "ligas.change_liga"
+    model = Liga
+    fields = ["nombre", "temporada"]
+    template_name = "ligas/administracion/form.html"
+    ajax_template_name = "ligas/administracion/_modal_form.html"
+    success_url = reverse_lazy("ligas:liga_list")
+
+
+class LigaDeleteView(AjaxTemplateMixin, AdminBaseView, PermissionRequiredMixin, DeleteView):
+    permission_required = "ligas.delete_liga"
+    model = Liga
+    template_name = "ligas/administracion/confirm_delete.html"
+    ajax_template_name = "ligas/administracion/_modal_confirm_delete.html"
+    success_url = reverse_lazy("ligas:liga_list")

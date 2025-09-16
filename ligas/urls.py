@@ -3,11 +3,13 @@ from django.urls import path
 from . import views
 from .abm_views import (
     AdminHomeView,
+    LigaListView, LigaCreateView, LigaUpdateView, LigaDeleteView,
     ClubListView, ClubCreateView, ClubUpdateView, ClubDeleteView,
     TorneoListView, TorneoCreateView, TorneoUpdateView, TorneoDeleteView,
     RondaListView, RondaCreateView, RondaUpdateView, RondaDeleteView,
     CategoriaListView, CategoriaCreateView, CategoriaUpdateView, CategoriaDeleteView,
     EquipoListView, EquipoCreateView, EquipoUpdateView, EquipoDeleteView,
+    EquipoDetailView,
     JugadorListView, JugadorCreateView, JugadorUpdateView, JugadorDeleteView,
     ArbitroListView, ArbitroCreateView, ArbitroUpdateView, ArbitroDeleteView,
     IdentidadView,
@@ -21,6 +23,11 @@ urlpatterns = [
 
     # administración (non-admin)
     path("administracion/", AdminHomeView.as_view(), name="admin_home"),
+
+    path("administracion/ligas/", LigaListView.as_view(), name="liga_list"),
+    path("administracion/ligas/nueva/", LigaCreateView.as_view(), name="liga_create"),
+    path("administracion/ligas/<int:pk>/editar/", LigaUpdateView.as_view(), name="liga_update"),
+    path("administracion/ligas/<int:pk>/eliminar/", LigaDeleteView.as_view(), name="liga_delete"),
 
     path("administracion/clubes/", ClubListView.as_view(), name="club_list"),
     path("administracion/clubes/nuevo/", ClubCreateView.as_view(), name="club_create"),
@@ -43,6 +50,7 @@ urlpatterns = [
     path("administracion/categorias/<int:pk>/eliminar/", CategoriaDeleteView.as_view(), name="categoria_delete"),
 
     path("administracion/equipos/", EquipoListView.as_view(), name="equipo_list"),
+    path("administracion/equipos/<int:pk>/", EquipoDetailView.as_view(), name="equipo_detail"),
     path("administracion/equipos/nuevo/", EquipoCreateView.as_view(), name="equipo_create"),
     path("administracion/equipos/<int:pk>/editar/", EquipoUpdateView.as_view(), name="equipo_update"),
     path("administracion/equipos/<int:pk>/eliminar/", EquipoDeleteView.as_view(), name="equipo_delete"),

@@ -36,6 +36,12 @@
           <svg class="caret hide-when-collapsed" viewBox="0 0 24 24" width="18" height="18" xmlns="http://www.w3.org/2000/svg"><path d="M8 10l4 4 4-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
         </button>
         <div class="submenu" id="adminSubmenu">
+          {% if perms.ligas.view_liga %}
+          <a href="{% url 'ligas:liga_list' %}" class="{% if request.path|slice:':20' == '/administracion/ligas' %}active{% endif %}">
+            <svg class="icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M4 4h16v4H4zM4 10h16v4H4zM4 16h16v4H4z" fill="currentColor"/></svg>
+            <span class="hide-when-collapsed">Ligas</span>
+          </a>
+          {% endif %}
           {% if perms.ligas.view_club %}
           <a href="{% url 'ligas:club_list' %}" class="{% if request.path|slice:':22' == '/administracion/clubes' %}active{% endif %}">
             <svg class="icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M3 10l9-7 9 7v9a2 2 0 0 1-2 2h-4v-6H9v6H5a2 2 0 0 1-2-2v-9z" fill="currentColor"/></svg>
@@ -177,6 +183,130 @@
           }
         });
       }
+    })();
+  </script>
+  <!-- Modal container -->
+  <div id="modalBackdrop" class="modal-backdrop" hidden>
+    <div class="modal-window" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+      <div class="modal-header">
+        <h3 id="modalTitle" class="modal-title">Nuevo registro</h3>
+        <button type="button" class="modal-close" aria-label="Cerrar">×</button>
+      </div>
+      <div id="modalBody" class="modal-body"></div>
+    </div>
+  </div>
+  <script>
+    (function(){
+      const backdrop = document.getElementById('modalBackdrop');
+      const body = document.getElementById('modalBody');
+      const titleEl = document.getElementById('modalTitle');
+      const closeBtn = backdrop ? backdrop.querySelector('.modal-close') : null;
+
+      function openModal(title){
+        if (title) titleEl.textContent = title;
+        backdrop.removeAttribute('hidden');
+        document.body.style.overflow = 'hidden';
+      }
+      function closeModal(){
+        backdrop.setAttribute('hidden', '');
+        body.innerHTML = '';
+        document.body.style.overflow = '';
+      }
+      async function refreshList(){
+        try {
+          const resp = await fetch(window.location.href, { credentials:'same-origin' });
+          const html = await resp.text();
+          const doc = new DOMParser().parseFromString(html, 'text/html');
+          const newList = doc.getElementById('listContainer');
+          const currentList = document.getElementById('listContainer');
+          if (newList && currentList) {
+            currentList.replaceWith(newList);
+          }
+        } catch (e) { console.warn('No se pudo refrescar la lista', e); }
+      }
+
+      function attachFormHandler(container){
+        const form = container.querySelector('form');
+        if (!form) return;
+        form.addEventListener('submit', async function(ev){
+          ev.preventDefault();
+          // Prefer the resolved action URL
+          const url = form.action || form.getAttribute('action');
+          const formData = new FormData(form);
+          // Include which submit button was pressed (for add_another)
+          if (ev.submitter && ev.submitter.name) {
+            formData.append(ev.submitter.name, ev.submitter.value || '1');
+          }
+          try {
+            const resp = await fetch(url, {
+              method: 'POST',
+              headers: { 'X-Requested-With': 'XMLHttpRequest' },
+              body: formData,
+              credentials: 'same-origin'
+            });
+            const addAnother = resp.headers.get('X-Add-Another-Success') === '1';
+            // If redirected to success_url, reload list and close
+            if (resp.redirected) {
+              // Close to avoid visual glitch during reload
+              backdrop && backdrop.setAttribute('hidden', '');
+              window.location.reload();
+              return;
+            }
+            const html = await resp.text();
+            // Heuristic: if server responded with full page (has <html), fallback to reload
+            if (html.indexOf('<html') !== -1) {
+              backdrop && backdrop.setAttribute('hidden', '');
+              window.location.reload();
+              return;
+            }
+            body.innerHTML = html; // This is either a fresh form (success add-another) or form with errors
+            attachFormHandler(body);
+            if (addAnother) {
+              // Refresh background list while keeping modal open
+              refreshList();
+            }
+          } catch (e) {
+            console.error(e);
+            alert('Ocurrió un error al guardar.');
+          }
+        });
+      }
+
+      document.addEventListener('click', async function(e){
+        const trigger = e.target.closest('.js-open-modal');
+        if (trigger) {
+          // Allow normal navigation with middle click or modifier
+          if (e.button === 1 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+          e.preventDefault();
+          const url = trigger.getAttribute('href');
+          const title = trigger.getAttribute('data-modal-title') || 'Nuevo registro';
+          try {
+            const resp = await fetch(url, {
+              headers: { 'X-Requested-With': 'XMLHttpRequest' },
+              credentials: 'same-origin'
+            });
+            const html = await resp.text();
+            body.innerHTML = html;
+            openModal(title);
+            attachFormHandler(body);
+          } catch (err) {
+            console.error(err);
+          }
+        }
+      });
+
+      // Close handlers
+      if (closeBtn) closeBtn.addEventListener('click', closeModal);
+      backdrop && backdrop.addEventListener('click', function(e){
+        if (e.target === backdrop) closeModal();
+      });
+      document.addEventListener('keydown', function(e){
+        if (e.key === 'Escape' && backdrop && !backdrop.hasAttribute('hidden')) closeModal();
+      });
+      document.addEventListener('click', function(e){
+        const btn = e.target.closest('[data-modal-close]');
+        if (btn) closeModal();
+      });
     })();
   </script>
 </body>

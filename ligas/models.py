@@ -67,21 +67,21 @@ class Ronda(models.Model):
 # =====================
 
 class Categoria(models.Model):
-    # Categoría por torneo (p.ej. "2015 A", "Sub 11") con flags útiles
-    torneo = models.ForeignKey(Torneo, on_delete=models.CASCADE, related_name="categorias")
+    # Categoría por liga (p.ej. "2015 A", "Sub 11") con flags útiles
+    liga = models.ForeignKey(Liga, on_delete=models.CASCADE, related_name="categorias")
     nombre = models.CharField(max_length=30)
     horario = models.TimeField(null=True, blank=True)
     activa = models.BooleanField(default=True)
     suma_puntos_general = models.BooleanField(default=True)
 
     class Meta:
-        unique_together = ("torneo", "nombre")
-        ordering = ["torneo__liga__temporada", "torneo__nombre", "nombre"]
+        unique_together = ("liga", "nombre")
+        ordering = ["liga__temporada", "liga__nombre", "nombre"]
         verbose_name = "Categoría"
         verbose_name_plural = "Categorías"
 
     def __str__(self) -> str:
-        return f"{self.nombre} - {self.torneo}"
+        return f"{self.nombre} - {self.liga}"
 
 
 class Equipo(models.Model):
@@ -92,7 +92,7 @@ class Equipo(models.Model):
 
     class Meta:
         unique_together = ("club", "categoria")
-        ordering = ["categoria__torneo__liga__temporada", "categoria__nombre", "club__nombre"]
+        ordering = ["categoria__liga__temporada", "categoria__nombre", "club__nombre"]
         verbose_name = "Equipo"
         verbose_name_plural = "Equipos"
 
