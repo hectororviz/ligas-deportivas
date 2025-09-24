@@ -3,12 +3,13 @@ from django.db.models import Q
 from django.urls import reverse_lazy
 from django.views.generic import TemplateView, ListView, CreateView, UpdateView, DeleteView
 from django.views.generic.detail import DetailView
-
-from .models import Club, Liga, Torneo, Ronda, Categoria, Equipo, Jugador, Arbitro, SiteIdentity
-from django.views.generic.edit import UpdateView
+from django.views.generic.edit import FormView
 from django.contrib import messages
 from django.shortcuts import redirect
 from django.db.utils import OperationalError, ProgrammingError
+
+from .forms import EquipoGenerateForm
+from .models import Club, Liga, Torneo, Ronda, Categoria, Equipo, Jugador, Arbitro, SiteIdentity
 
 
 class AdminBaseView(LoginRequiredMixin):
@@ -251,6 +252,52 @@ class EquipoCreateView(AjaxCreateMixin, AdminBaseView, PermissionRequiredMixin, 
     template_name = "ligas/administracion/form.html"
     ajax_template_name = "ligas/administracion/_modal_form.html"
     success_url = reverse_lazy("ligas:equipo_list")
+
+
+class EquipoGenerateView(AjaxTemplateMixin, AdminBaseView, PermissionRequiredMixin, FormView):
+    permission_required = "ligas.add_equipo"
+    form_class = EquipoGenerateForm
+    template_name = "ligas/administracion/form.html"
+    ajax_template_name = "ligas/administracion/equipo_generate_modal.html"
+    success_url = reverse_lazy("ligas:equipo_list")
+
+    def form_valid(self, form):
+        club = form.cleaned_data["club"]
+        liga = form.cleaned_data["liga"]
+        categorias = list(liga.categorias.all())
+
+        if not categorias:
+            messages.warning(self.request, f"La liga {liga} no tiene categorías asociadas.")
+            return super().form_valid(form)
+
+        created = 0
+        for categoria in categorias:
+            alias = f"{club.nombre} - {categoria.nombre}"
+            equipo, created_flag = Equipo.objects.get_or_create(
+                club=club,
+                categoria=categoria,
+                defaults={"alias": alias},
+            )
+            if created_flag:
+                created += 1
+            elif not equipo.alias:
+                equipo.alias = alias
+                equipo.save(update_fields=["alias"])
+
+        skipped = len(categorias) - created
+
+        if created:
+            message = f"Se generaron {created} equipo{'s' if created != 1 else ''} para {club} en {liga}."
+            if skipped:
+                message += f" {skipped} ya existían."
+            messages.success(self.request, message)
+        else:
+            messages.info(
+                self.request,
+                f"No se crearon equipos nuevos: ya existían para todas las categorías de {liga}.",
+            )
+
+        return super().form_valid(form)
 
 
 class EquipoDetailView(AdminBaseView, PermissionRequiredMixin, DetailView):
