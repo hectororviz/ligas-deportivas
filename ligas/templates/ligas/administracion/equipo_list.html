@@ -8,6 +8,7 @@
     <button class="btn" type="submit">Buscar</button>
   </form>
   {% if perms.ligas.add_equipo %}
+    <a class="btn js-open-modal" data-modal-title="Generar equipos" href="{% url 'ligas:equipo_generate' %}">Generar</a>
     <a class="btn primary js-open-modal" data-modal-title="Nuevo equipo" href="{% url 'ligas:equipo_create' %}">Nuevo equipo</a>
   {% endif %}
 {% endblock %}
