@@ -20,12 +20,6 @@ app_name = "ligas"
 urlpatterns = [
     # público/home
     path("", views.home, name="home"),
-    path("torneos/<int:pk>/fixture/", views.torneo_fixture, name="torneo_fixture"),
-    path(
-        "torneos/<int:pk>/fixture/create",
-        views.torneo_fixture_create,
-        name="torneo_fixture_create",
-    ),
 
     # administración (non-admin)
     path("administracion/", AdminHomeView.as_view(), name="admin_home"),
