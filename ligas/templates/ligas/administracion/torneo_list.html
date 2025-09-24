@@ -23,7 +23,6 @@
         <td>{{ obj.nombre }}</td>
         <td>{{ obj.liga }}</td>
         <td>
-          <a class="btn" href="{% url 'ligas:torneo_fixture' obj.pk %}">Fixture</a>
           {% if perms.ligas.change_torneo %}<a class="btn js-open-modal" data-modal-title="Editar torneo" href="{% url 'ligas:torneo_update' obj.pk %}">Editar</a>{% endif %}
           {% if perms.ligas.delete_torneo %}<a class="btn danger js-open-modal" data-modal-title="Eliminar torneo" href="{% url 'ligas:torneo_delete' obj.pk %}">Eliminar</a>{% endif %}
         </td>
