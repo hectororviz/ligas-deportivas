@@ -1,4 +1,5 @@
 from django.db import models
+from django.db.models import F, Q
 from django.core.validators import RegexValidator
 
 
@@ -173,6 +174,63 @@ class Partido(models.Model):
 
     def __str__(self) -> str:
         return f"[{self.categoria.nombre}] {self.local} vs {self.visitante} - {self.fecha_ref}"
+
+
+# =====================
+# FIXTURE POR TORNEO
+# =====================
+
+
+class FixturePartido(models.Model):
+    RONDA_IDA = 1
+    RONDA_VUELTA = 2
+    RONDAS = (
+        (RONDA_IDA, "Ronda 1 (Ida)"),
+        (RONDA_VUELTA, "Ronda 2 (Vuelta)"),
+    )
+
+    torneo = models.ForeignKey(
+        Torneo, on_delete=models.PROTECT, related_name="fixture_partidos"
+    )
+    ronda = models.SmallIntegerField(choices=RONDAS)
+    fecha_nro = models.SmallIntegerField()
+    local = models.ForeignKey(
+        Club, on_delete=models.PROTECT, related_name="fixture_partidos_local"
+    )
+    visitante = models.ForeignKey(
+        Club, on_delete=models.PROTECT, related_name="fixture_partidos_visitante"
+    )
+    played = models.BooleanField(default=False)
+    goles_local = models.IntegerField(null=True, blank=True)
+    goles_visitante = models.IntegerField(null=True, blank=True)
+    programada_en = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        constraints = [
+            models.CheckConstraint(
+                check=~Q(local=F("visitante")),
+                name="chk_fixture_local_distinto_visitante",
+            ),
+            models.UniqueConstraint(
+                fields=["torneo", "ronda", "fecha_nro", "local", "visitante"],
+                name="uq_partido_fixture",
+            ),
+        ]
+        ordering = [
+            "torneo__liga__temporada",
+            "torneo__nombre",
+            "ronda",
+            "fecha_nro",
+            "local__nombre",
+        ]
+        verbose_name = "Partido de fixture"
+        verbose_name_plural = "Partidos de fixture"
+
+    def __str__(self) -> str:
+        return (
+            f"[{self.torneo}] Fecha {self.fecha_nro} Ronda {self.get_ronda_display()}: "
+            f"{self.local} vs {self.visitante}"
+        )
 
 
 # ===========================
