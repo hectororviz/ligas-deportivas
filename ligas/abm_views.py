@@ -9,15 +9,28 @@ from django.views.generic.detail import DetailView
 from django.views.generic.edit import FormView
 from django.contrib import messages
 from django.shortcuts import get_object_or_404, redirect
+from django.db import transaction
 from django.db.utils import OperationalError, ProgrammingError
 
-from .forms import EquipoGenerateForm
+from .forms import EquipoGenerateForm, ResultadoPartidoFixtureForm
 from .fixture import (
     FixtureAlreadyExists,
     FixtureGenerationError,
     generate_fixture,
 )
-from .models import Club, Liga, Torneo, Ronda, Categoria, Equipo, Jugador, Arbitro, PartidoFixture, SiteIdentity
+from .models import (
+    Club,
+    Liga,
+    Torneo,
+    Ronda,
+    Categoria,
+    Equipo,
+    Jugador,
+    Arbitro,
+    PartidoFixture,
+    ResultadoCategoriaPartido,
+    SiteIdentity,
+)
 
 
 class AdminBaseView(LoginRequiredMixin):
@@ -211,7 +224,18 @@ class TorneoFixtureView(AdminBaseView, PermissionRequiredMixin, TemplateView):
             self._clubes_cache = list(clubes_qs)
         return self._clubes_cache
 
-    def _build_fixture_context(self, clubs, partidos):
+    def can_manage_fixture(self):
+        user = self.request.user
+        return user.is_authenticated and user.has_perm("ligas.change_partidofixture")
+
+    def get_torneo_categorias(self):
+        if not hasattr(self, "_categorias_cache"):
+            self._categorias_cache = list(
+                Categoria.objects.filter(liga=self.torneo.liga).order_by("nombre")
+            )
+        return self._categorias_cache
+
+    def _build_fixture_rows(self, clubs, partidos, categorias):
         rondas = {
             PartidoFixture.RONDA_IDA: {},
             PartidoFixture.RONDA_VUELTA: {},
@@ -219,52 +243,84 @@ class TorneoFixtureView(AdminBaseView, PermissionRequiredMixin, TemplateView):
         for partido in partidos:
             rondas.setdefault(partido.ronda, {}).setdefault(partido.fecha_nro, []).append(partido)
 
-        for fechas in rondas.values():
-            for lista in fechas.values():
-                lista.sort(key=lambda match: (match.club_local.nombre, match.club_visitante.nombre))
+        club_ids = [club.id for club in clubs]
+        clubes_por_id = {club.id: club for club in clubs}
 
-        club_ids = {club.id for club in clubs}
-        libres = {
+        try:
+            resultados = list(
+                ResultadoCategoriaPartido.objects.filter(partido__in=partidos, categoria__in=categorias)
+            )
+        except (ProgrammingError, OperationalError):
+            resultados = []
+
+        resultados_por_partido: dict[int, dict[int, ResultadoCategoriaPartido]] = {}
+        for resultado in resultados:
+            resultados_por_partido.setdefault(resultado.partido_id, {})[resultado.categoria_id] = resultado
+
+        total_categorias = len(categorias)
+        estado_por_partido: dict[int, dict[str, int | str]] = {}
+        for partido in partidos:
+            resultados_map = resultados_por_partido.get(partido.id, {})
+            completados = sum(1 for categoria in categorias if categoria.id in resultados_map)
+            if completados == 0:
+                estado = "pendiente"
+            elif completados == total_categorias and total_categorias > 0:
+                estado = "jugado"
+            else:
+                estado = "parcial"
+            estado_por_partido[partido.id] = {
+                "estado": estado,
+                "completados": completados,
+                "total": total_categorias,
+            }
+
+        bye_por_fecha = {
             PartidoFixture.RONDA_IDA: {},
             PartidoFixture.RONDA_VUELTA: {},
         }
         for ronda, fechas in rondas.items():
             for fecha, lista in fechas.items():
                 jugando = {match.club_local_id for match in lista} | {match.club_visitante_id for match in lista}
-                libres_ids = list(club_ids - jugando)
-                club_libre = None
-                if libres_ids:
-                    id_libre = libres_ids[0]
-                    club_libre = next((club for club in clubs if club.id == id_libre), None)
-                libres[ronda][fecha] = club_libre
+                libres_ids = [club_id for club_id in club_ids if club_id not in jugando]
+                club_libre = clubes_por_id.get(libres_ids[0]) if libres_ids else None
+                bye_por_fecha[ronda][fecha] = club_libre
 
-        fechas_por_ronda = {
-            ronda: sorted(fechas.keys())
-            for ronda, fechas in rondas.items()
+        ronda_labels = {
+            PartidoFixture.RONDA_IDA: "Ronda 1 (Ida)",
+            PartidoFixture.RONDA_VUELTA: "Ronda 2 (Vuelta)",
         }
-
-        rounds_data = []
         ordered_rounds = [PartidoFixture.RONDA_IDA, PartidoFixture.RONDA_VUELTA]
+        rounds_data = []
         for ronda in ordered_rounds:
             fechas = rondas.get(ronda, {})
             fechas_ordenadas = sorted(fechas.keys())
             items = []
             for numero in fechas_ordenadas:
+                partidos_fecha = fechas[numero]
+                partida_rows = [
+                    {
+                        "partido": partido,
+                        "estado": estado_por_partido[partido.id]["estado"],
+                        "tiene_resultados": estado_por_partido[partido.id]["completados"] > 0,
+                    }
+                    for partido in partidos_fecha
+                ]
                 items.append(
                     {
                         "numero": numero,
-                        "partidos": fechas[numero],
-                        "libre": libres[ronda].get(numero),
+                        "partidos": partida_rows,
+                        "libre": bye_por_fecha[ronda].get(numero),
                     }
                 )
             rounds_data.append(
                 {
                     "id": ronda,
+                    "label": ronda_labels[ronda],
                     "fechas": items,
                 }
             )
 
-        return rondas, libres, fechas_por_ronda, rounds_data
+        return rounds_data, estado_por_partido
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -275,7 +331,7 @@ class TorneoFixtureView(AdminBaseView, PermissionRequiredMixin, TemplateView):
             partidos_qs = (
                 PartidoFixture.objects.filter(torneo=self.torneo)
                 .select_related("club_local", "club_visitante")
-                .order_by("ronda", "fecha_nro", "club_local__nombre", "club_visitante__nombre")
+                .order_by("ronda", "fecha_nro", "id")
             )
             partidos = list(partidos_qs)
         except (ProgrammingError, OperationalError):
@@ -284,7 +340,8 @@ class TorneoFixtureView(AdminBaseView, PermissionRequiredMixin, TemplateView):
 
 
         fixture_exists = bool(partidos)
-        rondas, libres, fechas_por_ronda, rounds_data = self._build_fixture_context(clubes, partidos)
+        categorias = self.get_torneo_categorias()
+        rounds_data, estado_por_partido = self._build_fixture_rows(clubes, partidos, categorias)
 
         if fixture_exists:
             fechas_totales = max(match.fecha_nro for match in partidos)
@@ -297,39 +354,21 @@ class TorneoFixtureView(AdminBaseView, PermissionRequiredMixin, TemplateView):
             else:
                 fechas_totales = cantidad_clubes
 
-        ronda_labels = {
-            PartidoFixture.RONDA_IDA: "Ronda 1 (Ida)",
-            PartidoFixture.RONDA_VUELTA: "Ronda 2 (Vuelta)",
-        }
-        rounds_view = [
-            {
-                "id": data["id"],
-                "label": ronda_labels[data["id"]],
-                "fechas": data["fechas"],
-            }
-            for data in rounds_data
-        ]
-
         context.update(
             {
                 "torneo": self.torneo,
-                "clubes": clubes,
-                "club_count": len(clubes),
                 "fixture_exists": fixture_exists,
 
                 "fixture_table_missing": fixture_table_missing,
-
-                "fixture_rondas": rondas,
-                "fixture_libres": libres,
-                "fixture_fechas": fechas_por_ronda,
                 "fecha_count": fechas_totales,
-
+                "categorias": categorias,
+                "estado_por_partido": estado_por_partido,
                 "can_generate": self.request.user.has_perm("ligas.add_partidofixture")
                 and not fixture_table_missing,
-
+                "can_manage_resultados": self.can_manage_fixture(),
                 "has_bye": len(clubes) % 2 == 1,
-                "ronda_labels": ronda_labels,
-                "fixture_rounds_data": rounds_view,
+                "club_count": len(clubes),
+                "fixture_rounds_data": rounds_data,
             }
         )
         return context
@@ -352,6 +391,124 @@ class TorneoFixtureView(AdminBaseView, PermissionRequiredMixin, TemplateView):
         else:
             messages.success(request, f"Se generó el fixture con {len(created)} partidos.")
         return redirect(self.get_success_url())
+
+
+class PartidoFixtureResultadoView(AdminBaseView, PermissionRequiredMixin, FormView):
+    permission_required = "ligas.change_partidofixture"
+    form_class = ResultadoPartidoFixtureForm
+    template_name = "ligas/administracion/torneo_fixture_resultados.html"
+
+    def dispatch(self, request, *args, **kwargs):
+        self.torneo = get_object_or_404(Torneo.objects.select_related("liga"), pk=kwargs["pk"])
+        self.partido = get_object_or_404(
+            PartidoFixture.objects.select_related("torneo", "club_local", "club_visitante"),
+            pk=kwargs["partido_id"],
+            torneo=self.torneo,
+        )
+        self.categorias = list(
+            Categoria.objects.filter(liga=self.torneo.liga).order_by("nombre")
+        )
+        return super().dispatch(request, *args, **kwargs)
+
+    def has_permission(self):
+        return self.request.user.is_authenticated and self.request.user.has_perm(
+            "ligas.change_partidofixture"
+        )
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs["categorias"] = self.categorias
+        initial = {}
+        resultados = ResultadoCategoriaPartido.objects.filter(partido=self.partido)
+        for resultado in resultados:
+            initial[ResultadoPartidoFixtureForm._field_name(resultado.categoria, "local")] = (
+                resultado.goles_local
+            )
+            initial[ResultadoPartidoFixtureForm._field_name(resultado.categoria, "visitante")] = (
+                resultado.goles_visitante
+            )
+        if self.request.method == "GET":
+            kwargs["initial"] = initial
+        return kwargs
+
+    def form_valid(self, form):
+        with transaction.atomic():
+            existentes = {
+                resultado.categoria_id: resultado
+                for resultado in ResultadoCategoriaPartido.objects.filter(partido=self.partido)
+            }
+            for categoria, goles_local, goles_visitante in form.iter_resultados():
+                existente = existentes.get(categoria.id)
+                if goles_local is None or goles_visitante is None:
+                    if existente:
+                        existente.delete()
+                    continue
+
+                if existente:
+                    if (
+                        existente.goles_local != goles_local
+                        or existente.goles_visitante != goles_visitante
+                    ):
+                        existente.goles_local = goles_local
+                        existente.goles_visitante = goles_visitante
+                        existente.save(update_fields=["goles_local", "goles_visitante"])
+                else:
+                    ResultadoCategoriaPartido.objects.create(
+                        partido=self.partido,
+                        categoria=categoria,
+                        goles_local=goles_local,
+                        goles_visitante=goles_visitante,
+                    )
+
+            resultados_actuales = list(
+                ResultadoCategoriaPartido.objects.filter(partido=self.partido)
+            )
+            total_categorias = len(self.categorias)
+            completados = len(resultados_actuales)
+
+            if completados == 0 or total_categorias == 0:
+                self.partido.jugado = False
+                self.partido.goles_local = None
+                self.partido.goles_visitante = None
+            elif completados == total_categorias:
+                self.partido.jugado = True
+                self.partido.goles_local = sum(r.goles_local for r in resultados_actuales)
+                self.partido.goles_visitante = sum(r.goles_visitante for r in resultados_actuales)
+            else:
+                self.partido.jugado = False
+                self.partido.goles_local = None
+                self.partido.goles_visitante = None
+
+            self.partido.save(update_fields=["jugado", "goles_local", "goles_visitante"])
+
+        messages.success(self.request, "Resultados guardados")
+        return super().form_valid(form)
+
+    def get_success_url(self):
+        return reverse_lazy("ligas:torneo_fixture", kwargs={"pk": self.torneo.pk})
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        form = context.get("form")
+        context.update(
+            {
+                "torneo": self.torneo,
+                "partido": self.partido,
+                "categorias": self.categorias,
+                "tiene_resultados": ResultadoCategoriaPartido.objects.filter(
+                    partido=self.partido
+                ).exists(),
+                "categoria_rows": [
+                    {
+                        "categoria": categoria,
+                        "local_field": form[ResultadoPartidoFixtureForm._field_name(categoria, "local")] if form else None,
+                        "visitante_field": form[ResultadoPartidoFixtureForm._field_name(categoria, "visitante")] if form else None,
+                    }
+                    for categoria in self.categorias
+                ],
+            }
+        )
+        return context
 
 
 # ========

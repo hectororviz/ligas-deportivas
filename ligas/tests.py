@@ -6,7 +6,16 @@ from django.test import TestCase
 from django.urls import reverse
 
 from .fixture import FixtureAlreadyExists, FixtureGenerationError, generate_fixture
-from .models import Categoria, Club, Equipo, Liga, PartidoFixture, Torneo
+from .forms import ResultadoPartidoFixtureForm
+from .models import (
+    Categoria,
+    Club,
+    Equipo,
+    Liga,
+    PartidoFixture,
+    ResultadoCategoriaPartido,
+    Torneo,
+)
 
 
 class EquipoGenerateViewTests(TestCase):
@@ -195,13 +204,16 @@ class TorneoFixtureViewTests(TestCase):
             password="testpass123",
             is_staff=True,
         )
-        perms = Permission.objects.filter(codename__in=["view_torneo", "add_partidofixture"])
+        perms = Permission.objects.filter(
+            codename__in=["view_torneo", "add_partidofixture", "change_partidofixture"]
+        )
         self.user.user_permissions.add(*perms)
         self.client.login(username="fixture-admin", password="testpass123")
 
         self.liga = Liga.objects.create(nombre="Liga Vista", temporada="2025")
         self.torneo = Torneo.objects.create(liga=self.liga, nombre="Invierno")
         self.categoria = Categoria.objects.create(liga=self.liga, nombre="Sub 15")
+        self.categoria_b = Categoria.objects.create(liga=self.liga, nombre="Sub 17")
 
         self.clubes = [
             Club.objects.create(nombre="Vista Club 1"),
@@ -218,6 +230,7 @@ class TorneoFixtureViewTests(TestCase):
         response = self.client.get(self.url)
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.context["club_count"], len(self.clubes))
+        self.assertNotContains(response, "Clubes participantes")
 
     def test_post_generates_fixture(self):
         response = self.client.post(self.url)
@@ -230,6 +243,47 @@ class TorneoFixtureViewTests(TestCase):
         self.assertRedirects(response, self.url)
         self.assertEqual(PartidoFixture.objects.filter(torneo=self.torneo).count(), count)
 
+    def test_fixture_table_columns_and_order(self):
+        generate_fixture(self.torneo, self.clubes)
+
+        response = self.client.get(self.url)
+        self.assertContains(response, "<th>Local</th>")
+        self.assertContains(response, "<th>Visitante</th>")
+        self.assertContains(response, "<th>Fecha</th>")
+        self.assertContains(response, "<th>Estado</th>")
+        self.assertContains(response, "<th>Acciones</th>")
+
+        rounds_data = response.context["fixture_rounds_data"]
+        rendered_partidos = []
+        for ronda in rounds_data:
+            for fecha in ronda["fechas"]:
+                rendered_partidos.extend([row["partido"] for row in fecha["partidos"]])
+
+        expected_partidos = list(
+            PartidoFixture.objects.filter(torneo=self.torneo).order_by("ronda", "fecha_nro", "id")
+        )
+        self.assertEqual([p.id for p in rendered_partidos], [p.id for p in expected_partidos])
+
+    def test_fixture_shows_bye_without_actions(self):
+        club_extra = Club.objects.create(nombre="Vista Club 5")
+        Equipo.objects.create(
+            club=club_extra,
+            categoria=self.categoria,
+            alias=f"{club_extra.nombre} - Sub 15",
+        )
+        clubes = self.clubes + [club_extra]
+        generate_fixture(self.torneo, clubes)
+
+        response = self.client.get(self.url)
+        self.assertContains(response, "Libre")
+        html = response.content.decode()
+        libre_index = html.find("Libre</td>")
+        self.assertGreaterEqual(libre_index, 0)
+        snippet = html[libre_index:libre_index + 150]
+        self.assertIn("estado-pendiente", snippet)
+        self.assertIn("<td>—</td>", snippet)
+        self.assertNotIn("href", snippet)
+
     def test_fixture_page_handles_missing_table(self):
         with mock.patch.object(
             PartidoFixture.objects,
@@ -241,4 +295,82 @@ class TorneoFixtureViewTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertTrue(response.context["fixture_table_missing"])
         self.assertContains(response, "No se detectó la tabla de partidos de fixture")
+
+    def test_resultados_flow_updates_estado(self):
+        generate_fixture(self.torneo, self.clubes)
+        partido = (
+            PartidoFixture.objects.filter(torneo=self.torneo)
+            .order_by("ronda", "fecha_nro", "id")
+            .first()
+        )
+        url = reverse("ligas:partido_fixture_resultados", args=[self.torneo.pk, partido.pk])
+
+        data = {
+            ResultadoPartidoFixtureForm._field_name(self.categoria, "local"): 2,
+            ResultadoPartidoFixtureForm._field_name(self.categoria, "visitante"): 1,
+            ResultadoPartidoFixtureForm._field_name(self.categoria_b, "local"): "",
+            ResultadoPartidoFixtureForm._field_name(self.categoria_b, "visitante"): "",
+        }
+
+        response = self.client.post(url, data)
+        self.assertRedirects(response, self.url)
+
+        resultados = ResultadoCategoriaPartido.objects.filter(partido=partido)
+        self.assertEqual(resultados.count(), 1)
+        partido.refresh_from_db()
+        self.assertFalse(partido.jugado)
+        self.assertIsNone(partido.goles_local)
+        self.assertIsNone(partido.goles_visitante)
+
+        fixture_response = self.client.get(self.url)
+        estados = fixture_response.context["estado_por_partido"]
+        self.assertEqual(estados[partido.id]["estado"], "parcial")
+
+        # Edición completa
+        data.update(
+            {
+                ResultadoPartidoFixtureForm._field_name(self.categoria_b, "local"): 0,
+                ResultadoPartidoFixtureForm._field_name(self.categoria_b, "visitante"): 3,
+            }
+        )
+        response = self.client.post(url, data)
+        self.assertRedirects(response, self.url)
+
+        partido.refresh_from_db()
+        self.assertTrue(partido.jugado)
+        self.assertEqual(partido.goles_local, 2)
+        self.assertEqual(partido.goles_visitante, 4)
+        resultados = ResultadoCategoriaPartido.objects.filter(partido=partido)
+        self.assertEqual(resultados.count(), 2)
+
+        fixture_response = self.client.get(self.url)
+        estados = fixture_response.context["estado_por_partido"]
+        self.assertEqual(estados[partido.id]["estado"], "jugado")
+
+        # GET precarga valores
+        edit_response = self.client.get(url)
+        form = edit_response.context["form"]
+        self.assertEqual(
+            form[ResultadoPartidoFixtureForm._field_name(self.categoria, "local")].value(),
+            2,
+        )
+        self.assertEqual(
+            form[ResultadoPartidoFixtureForm._field_name(self.categoria_b, "visitante")].value(),
+            3,
+        )
+
+    def test_resultados_validation_requires_enteros(self):
+        generate_fixture(self.torneo, self.clubes)
+        partido = PartidoFixture.objects.filter(torneo=self.torneo).first()
+        url = reverse("ligas:partido_fixture_resultados", args=[self.torneo.pk, partido.pk])
+        data = {
+            ResultadoPartidoFixtureForm._field_name(self.categoria, "local"): -1,
+            ResultadoPartidoFixtureForm._field_name(self.categoria, "visitante"): "",
+        }
+
+        response = self.client.post(url, data)
+        self.assertEqual(response.status_code, 200)
+        form = response.context["form"]
+        field_name = ResultadoPartidoFixtureForm._field_name(self.categoria, "local")
+        self.assertIn("Ingrese un entero ≥ 0", form[field_name].errors)
 

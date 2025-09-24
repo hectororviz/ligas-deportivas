@@ -189,8 +189,8 @@ class PartidoFixture(models.Model):
     club_local = models.ForeignKey(Club, on_delete=models.PROTECT, related_name="partidos_fixture_local")
     club_visitante = models.ForeignKey(Club, on_delete=models.PROTECT, related_name="partidos_fixture_visitante")
     jugado = models.BooleanField(default=False)
-    goles_local = models.IntegerField(default=0)
-    goles_visitante = models.IntegerField(default=0)
+    goles_local = models.IntegerField(null=True, blank=True)
+    goles_visitante = models.IntegerField(null=True, blank=True)
     fecha_programada = models.DateTimeField(null=True, blank=True)
 
     class Meta:
@@ -209,6 +209,39 @@ class PartidoFixture(models.Model):
         return (
             f"[{self.torneo}] Fecha {self.fecha_nro} Ronda {self.get_ronda_display()}: "
             f"{self.club_local} vs {self.club_visitante}"
+        )
+
+
+class ResultadoCategoriaPartido(models.Model):
+    partido = models.ForeignKey(
+        PartidoFixture,
+        on_delete=models.CASCADE,
+        related_name="resultados_por_categoria",
+    )
+    categoria = models.ForeignKey(
+        Categoria,
+        on_delete=models.CASCADE,
+        related_name="resultados_partidos_fixture",
+    )
+    goles_local = models.PositiveIntegerField()
+    goles_visitante = models.PositiveIntegerField()
+
+    class Meta:
+        unique_together = ("partido", "categoria")
+        ordering = [
+            "partido__torneo__liga__temporada",
+            "partido__torneo__nombre",
+            "partido__ronda",
+            "partido__fecha_nro",
+            "categoria__nombre",
+        ]
+        verbose_name = "Resultado por categoría"
+        verbose_name_plural = "Resultados por categoría"
+
+    def __str__(self) -> str:
+        return (
+            f"{self.partido} - {self.categoria.nombre}: "
+            f"{self.goles_local}-{self.goles_visitante}"
         )
 
 

@@ -1,0 +1,64 @@
+{% extends 'ligas/base_admin.html' %}
+{% block title %}Resultados: {{ partido.club_local.nombre }} vs {{ partido.club_visitante.nombre }}{% endblock %}
+{% block header %}Resultados por categoría{% endblock %}
+{% block breadcrumbs %}
+  <a href="/">Inicio</a> /
+  Administración /
+  <a href="{% url 'ligas:torneo_list' %}">Torneos</a> /
+  <a href="{% url 'ligas:torneo_fixture' torneo.pk %}">Fixture</a> /
+  Resultados
+{% endblock %}
+{% block actions %}
+  <a class="btn" href="{% url 'ligas:torneo_fixture' torneo.pk %}">Volver al fixture</a>
+{% endblock %}
+{% block content %}
+  <div class="muted">Torneo: {{ torneo }}</div>
+  <div class="muted" style="margin-top:4px;">Partido: {{ partido.club_local.nombre }} vs {{ partido.club_visitante.nombre }} — Fecha {{ partido.fecha_nro }} ({{ partido.get_ronda_display }})</div>
+  {% if not categorias %}
+    <p class="muted" style="margin-top:16px;">El torneo no tiene categorías asociadas aún.</p>
+  {% else %}
+    <form method="post" novalidate onsubmit="const btn=this.querySelector('button[type=submit]'); if(btn){btn.disabled=true; btn.innerText='Guardando...';}">
+      {% csrf_token %}
+      {% if form.non_field_errors %}
+        <div class="errorlist" style="margin-bottom:12px;">
+          {% for error in form.non_field_errors %}
+            <div>{{ error }}</div>
+          {% endfor %}
+        </div>
+      {% endif %}
+      <table>
+        <thead>
+          <tr>
+            <th>Categoría</th>
+            <th style="width:120px;">Local (goles)</th>
+            <th style="width:120px;">Visitante (goles)</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in categoria_rows %}
+            <tr>
+              <td>{{ row.categoria.nombre }}</td>
+              <td>
+                {{ row.local_field }}
+                {% if row.local_field and row.local_field.errors %}
+                  <div class="errorlist">{% for error in row.local_field.errors %}<div>{{ error }}</div>{% endfor %}</div>
+                {% endif %}
+              </td>
+              <td>
+                {{ row.visitante_field }}
+                {% if row.visitante_field and row.visitante_field.errors %}
+                  <div class="errorlist">{% for error in row.visitante_field.errors %}<div>{{ error }}</div>{% endfor %}</div>
+                {% endif %}
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      <p class="muted" style="margin-top:8px;">Ingrese un entero ≥ 0 en ambas columnas para registrar el resultado de una categoría.</p>
+      <div style="margin-top:16px;">
+        <button type="submit" class="btn primary">Guardar</button>
+        <a class="btn" href="{% url 'ligas:torneo_fixture' torneo.pk %}">Cancelar</a>
+      </div>
+    </form>
+  {% endif %}
+{% endblock %}
