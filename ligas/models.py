@@ -175,6 +175,43 @@ class Partido(models.Model):
         return f"[{self.categoria.nombre}] {self.local} vs {self.visitante} - {self.fecha_ref}"
 
 
+class PartidoFixture(models.Model):
+    RONDA_IDA = 1
+    RONDA_VUELTA = 2
+    RONDA_CHOICES = (
+        (RONDA_IDA, "Ronda 1 (Ida)"),
+        (RONDA_VUELTA, "Ronda 2 (Vuelta)"),
+    )
+
+    torneo = models.ForeignKey(Torneo, on_delete=models.CASCADE, related_name="partidos_fixture")
+    ronda = models.PositiveSmallIntegerField(choices=RONDA_CHOICES)
+    fecha_nro = models.PositiveIntegerField()
+    club_local = models.ForeignKey(Club, on_delete=models.PROTECT, related_name="partidos_fixture_local")
+    club_visitante = models.ForeignKey(Club, on_delete=models.PROTECT, related_name="partidos_fixture_visitante")
+    jugado = models.BooleanField(default=False)
+    goles_local = models.IntegerField(default=0)
+    goles_visitante = models.IntegerField(default=0)
+    fecha_programada = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        unique_together = ("torneo", "ronda", "fecha_nro", "club_local", "club_visitante")
+        ordering = [
+            "torneo__liga__temporada",
+            "torneo__nombre",
+            "ronda",
+            "fecha_nro",
+            "club_local__nombre",
+        ]
+        verbose_name = "Partido de fixture"
+        verbose_name_plural = "Partidos de fixture"
+
+    def __str__(self) -> str:
+        return (
+            f"[{self.torneo}] Fecha {self.fecha_nro} Ronda {self.get_ronda_display()}: "
+            f"{self.club_local} vs {self.club_visitante}"
+        )
+
+
 # ===========================
 # EVENTOS Y REGLAS DE PUNTOS
 # ===========================

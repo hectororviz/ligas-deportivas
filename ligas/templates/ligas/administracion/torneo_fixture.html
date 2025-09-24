@@ -1,0 +1,96 @@
+{% extends 'ligas/base_admin.html' %}
+{% block title %}Fixture: {{ torneo.nombre }}{% endblock %}
+{% block header %}Fixture de {{ torneo.nombre }}{% endblock %}
+{% block breadcrumbs %}<a href="/">Inicio</a> / Administración / <a href="{% url 'ligas:torneo_list' %}">Torneos</a> / Fixture{% endblock %}
+{% block actions %}
+  <a class="btn" href="{% url 'ligas:torneo_list' %}">Volver</a>
+  {% if can_generate and not fixture_exists and club_count >= 2 %}
+    <form method="post" style="display:inline-block; margin-left:8px;">
+      {% csrf_token %}
+      <button type="submit" class="btn primary">Crear fixture</button>
+    </form>
+  {% endif %}
+{% endblock %}
+{% block content %}
+  <div class="muted">Liga: {{ torneo.liga }}</div>
+  <h2>Clubes participantes ({{ club_count }})</h2>
+  {% if clubes %}
+  <ul>
+    {% for club in clubes %}
+      <li>{{ club.nombre }}</li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <p class="muted">No hay clubes asociados al torneo todavía.</p>
+  {% endif %}
+
+  {% if club_count < 2 %}
+    <p class="muted">Se necesitan al menos dos clubes para generar el fixture.</p>
+  {% endif %}
+
+  {% if fixture_exists %}
+    <h2 style="margin-top:24px;">Fixture generado</h2>
+    <div class="muted">Cantidad de fechas por ronda: {{ fecha_count }}{% if has_bye %} (con un club libre por fecha){% endif %}.</div>
+    {% for ronda in fixture_rounds_data %}
+      <div style="margin-top:20px;">
+        <h3 style="margin-bottom:10px;">{{ ronda.label }}</h3>
+        {% if ronda.fechas %}
+          {% for fecha in ronda.fechas %}
+            <div style="margin-bottom:18px;">
+              <h4 style="margin:0 0 8px 0;">Fecha {{ fecha.numero }}</h4>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Local</th>
+                    <th>Visitante</th>
+                    <th>Estado</th>
+                    <th>Resultado</th>
+                    <th>Programado</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for partido in fecha.partidos %}
+                    <tr>
+                      <td>{{ partido.club_local.nombre }}</td>
+                      <td>{{ partido.club_visitante.nombre }}</td>
+                      <td>{% if partido.jugado %}Jugado{% else %}Pendiente{% endif %}</td>
+                      <td>
+                        {% if partido.jugado %}
+                          {{ partido.goles_local }} - {{ partido.goles_visitante }}
+                        {% else %}
+                          —
+                        {% endif %}
+                      </td>
+                      <td>
+                        {% if partido.fecha_programada %}
+                          {{ partido.fecha_programada|date:"d/m/Y H:i" }}
+                        {% else %}
+                          —
+                        {% endif %}
+                      </td>
+                    </tr>
+                  {% empty %}
+                    <tr><td colspan="5" class="muted">Sin partidos cargados.</td></tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+              {% if fecha.libre %}
+                <div class="muted" style="margin-top:6px;">Libre: {{ fecha.libre.nombre }}</div>
+              {% endif %}
+            </div>
+          {% endfor %}
+        {% else %}
+          <p class="muted">No hay partidos cargados para esta ronda.</p>
+        {% endif %}
+      </div>
+    {% endfor %}
+  {% else %}
+    <h2 style="margin-top:24px;">Fixture pendiente</h2>
+    {% if club_count >= 2 %}
+      <p>El fixture tendrá {{ fecha_count }} fecha{% if fecha_count != 1 %}s{% endif %} por ronda{% if has_bye %}, con un club libre por fecha{% endif %}. Usá el botón "Crear fixture" para generarlo automáticamente.</p>
+    {% endif %}
+    {% if not can_generate %}
+      <p class="muted">No tenés permisos para generar el fixture.</p>
+    {% endif %}
+  {% endif %}
+{% endblock %}
