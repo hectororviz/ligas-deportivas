@@ -1,17 +1,23 @@
 from urllib.parse import urlencode
 
 from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
+from django.core.exceptions import PermissionDenied
 from django.db.models import Q
 from django.urls import reverse_lazy
 from django.views.generic import TemplateView, ListView, CreateView, UpdateView, DeleteView
 from django.views.generic.detail import DetailView
 from django.views.generic.edit import FormView
 from django.contrib import messages
-from django.shortcuts import redirect
+from django.shortcuts import get_object_or_404, redirect
 from django.db.utils import OperationalError, ProgrammingError
 
 from .forms import EquipoGenerateForm
-from .models import Club, Liga, Torneo, Ronda, Categoria, Equipo, Jugador, Arbitro, SiteIdentity
+from .fixture import (
+    FixtureAlreadyExists,
+    FixtureGenerationError,
+    generate_fixture,
+)
+from .models import Club, Liga, Torneo, Ronda, Categoria, Equipo, Jugador, Arbitro, PartidoFixture, SiteIdentity
 
 
 class AdminBaseView(LoginRequiredMixin):
@@ -182,6 +188,165 @@ class TorneoDeleteView(AjaxTemplateMixin, AdminBaseView, PermissionRequiredMixin
     template_name = "ligas/administracion/confirm_delete.html"
     ajax_template_name = "ligas/administracion/_modal_confirm_delete.html"
     success_url = reverse_lazy("ligas:torneo_list")
+
+
+class TorneoFixtureView(AdminBaseView, PermissionRequiredMixin, TemplateView):
+    permission_required = "ligas.view_torneo"
+    template_name = "ligas/administracion/torneo_fixture.html"
+
+    def dispatch(self, request, *args, **kwargs):
+        self.torneo = get_object_or_404(Torneo.objects.select_related("liga"), pk=kwargs["pk"])
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_success_url(self):
+        return reverse_lazy("ligas:torneo_fixture", kwargs={"pk": self.torneo.pk})
+
+    def get_participating_clubs(self):
+        if not hasattr(self, "_clubes_cache"):
+            clubes_qs = (
+                Club.objects.filter(equipos__categoria__liga=self.torneo.liga)
+                .distinct()
+                .order_by("nombre")
+            )
+            self._clubes_cache = list(clubes_qs)
+        return self._clubes_cache
+
+    def _build_fixture_context(self, clubs, partidos):
+        rondas = {
+            PartidoFixture.RONDA_IDA: {},
+            PartidoFixture.RONDA_VUELTA: {},
+        }
+        for partido in partidos:
+            rondas.setdefault(partido.ronda, {}).setdefault(partido.fecha_nro, []).append(partido)
+
+        for fechas in rondas.values():
+            for lista in fechas.values():
+                lista.sort(key=lambda match: (match.club_local.nombre, match.club_visitante.nombre))
+
+        club_ids = {club.id for club in clubs}
+        libres = {
+            PartidoFixture.RONDA_IDA: {},
+            PartidoFixture.RONDA_VUELTA: {},
+        }
+        for ronda, fechas in rondas.items():
+            for fecha, lista in fechas.items():
+                jugando = {match.club_local_id for match in lista} | {match.club_visitante_id for match in lista}
+                libres_ids = list(club_ids - jugando)
+                club_libre = None
+                if libres_ids:
+                    id_libre = libres_ids[0]
+                    club_libre = next((club for club in clubs if club.id == id_libre), None)
+                libres[ronda][fecha] = club_libre
+
+        fechas_por_ronda = {
+            ronda: sorted(fechas.keys())
+            for ronda, fechas in rondas.items()
+        }
+
+        rounds_data = []
+        ordered_rounds = [PartidoFixture.RONDA_IDA, PartidoFixture.RONDA_VUELTA]
+        for ronda in ordered_rounds:
+            fechas = rondas.get(ronda, {})
+            fechas_ordenadas = sorted(fechas.keys())
+            items = []
+            for numero in fechas_ordenadas:
+                items.append(
+                    {
+                        "numero": numero,
+                        "partidos": fechas[numero],
+                        "libre": libres[ronda].get(numero),
+                    }
+                )
+            rounds_data.append(
+                {
+                    "id": ronda,
+                    "fechas": items,
+                }
+            )
+
+        return rondas, libres, fechas_por_ronda, rounds_data
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        clubes = self.get_participating_clubs()
+
+        fixture_table_missing = False
+        try:
+            partidos_qs = (
+                PartidoFixture.objects.filter(torneo=self.torneo)
+                .select_related("club_local", "club_visitante")
+                .order_by("ronda", "fecha_nro", "club_local__nombre", "club_visitante__nombre")
+            )
+            partidos = list(partidos_qs)
+        except (ProgrammingError, OperationalError):
+            partidos = []
+            fixture_table_missing = True
+
+        fixture_exists = bool(partidos)
+        rondas, libres, fechas_por_ronda, rounds_data = self._build_fixture_context(clubes, partidos)
+
+        if fixture_exists:
+            fechas_totales = max(match.fecha_nro for match in partidos)
+        else:
+            cantidad_clubes = len(clubes)
+            if cantidad_clubes == 0:
+                fechas_totales = 0
+            elif cantidad_clubes % 2 == 0:
+                fechas_totales = cantidad_clubes - 1
+            else:
+                fechas_totales = cantidad_clubes
+
+        ronda_labels = {
+            PartidoFixture.RONDA_IDA: "Ronda 1 (Ida)",
+            PartidoFixture.RONDA_VUELTA: "Ronda 2 (Vuelta)",
+        }
+        rounds_view = [
+            {
+                "id": data["id"],
+                "label": ronda_labels[data["id"]],
+                "fechas": data["fechas"],
+            }
+            for data in rounds_data
+        ]
+
+        context.update(
+            {
+                "torneo": self.torneo,
+                "clubes": clubes,
+                "club_count": len(clubes),
+                "fixture_exists": fixture_exists,
+                "fixture_table_missing": fixture_table_missing,
+                "fixture_rondas": rondas,
+                "fixture_libres": libres,
+                "fixture_fechas": fechas_por_ronda,
+                "fecha_count": fechas_totales,
+                "can_generate": self.request.user.has_perm("ligas.add_partidofixture")
+                and not fixture_table_missing,
+                "has_bye": len(clubes) % 2 == 1,
+                "ronda_labels": ronda_labels,
+                "fixture_rounds_data": rounds_view,
+            }
+        )
+        return context
+
+    def post(self, request, *args, **kwargs):
+        if not request.user.has_perm("ligas.add_partidofixture"):
+            raise PermissionDenied
+
+        clubes = self.get_participating_clubs()
+        if len(clubes) < 2:
+            messages.error(request, "Se necesitan al menos dos clubes para crear un fixture.")
+            return redirect(self.get_success_url())
+
+        try:
+            created = generate_fixture(self.torneo, clubes)
+        except FixtureAlreadyExists:
+            messages.info(request, "El torneo ya tiene un fixture generado.")
+        except FixtureGenerationError as exc:
+            messages.error(request, str(exc))
+        else:
+            messages.success(request, f"Se generó el fixture con {len(created)} partidos.")
+        return redirect(self.get_success_url())
 
 
 # ========

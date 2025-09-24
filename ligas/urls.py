@@ -5,7 +5,7 @@ from .abm_views import (
     AdminHomeView,
     LigaListView, LigaCreateView, LigaUpdateView, LigaDeleteView,
     ClubListView, ClubCreateView, ClubUpdateView, ClubDeleteView,
-    TorneoListView, TorneoCreateView, TorneoUpdateView, TorneoDeleteView,
+    TorneoListView, TorneoCreateView, TorneoUpdateView, TorneoDeleteView, TorneoFixtureView,
     RondaListView, RondaCreateView, RondaUpdateView, RondaDeleteView,
     CategoriaListView, CategoriaCreateView, CategoriaUpdateView, CategoriaDeleteView,
     EquipoListView, EquipoCreateView, EquipoGenerateView, EquipoUpdateView, EquipoDeleteView,
@@ -38,6 +38,7 @@ urlpatterns = [
     path("administracion/torneos/nuevo/", TorneoCreateView.as_view(), name="torneo_create"),
     path("administracion/torneos/<int:pk>/editar/", TorneoUpdateView.as_view(), name="torneo_update"),
     path("administracion/torneos/<int:pk>/eliminar/", TorneoDeleteView.as_view(), name="torneo_delete"),
+    path("administracion/torneos/<int:pk>/fixture/", TorneoFixtureView.as_view(), name="torneo_fixture"),
 
     path("administracion/rondas/", RondaListView.as_view(), name="ronda_list"),
     path("administracion/rondas/nuevo/", RondaCreateView.as_view(), name="ronda_create"),
