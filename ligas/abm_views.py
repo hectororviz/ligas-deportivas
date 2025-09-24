@@ -1,3 +1,5 @@
+from urllib.parse import urlencode
+
 from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
 from django.db.models import Q
 from django.urls import reverse_lazy
@@ -56,10 +58,50 @@ class AjaxCreateMixin(AjaxTemplateMixin):
         # Default behavior (redirect) – JS will detect and reload
         return super(AjaxTemplateMixin, self).form_valid(form)
 
+
+
+class PageSizeMixin:
+    """Allow changing the amount of rows rendered per page via querystring."""
+
+    page_size_query_param = "per_page"
+    page_size_options = (10, 25, 50, 100)
+    _current_page_size = None
+
+    def get_paginate_by(self, queryset):
+        default = super().get_paginate_by(queryset)
+        per_page = self.request.GET.get(self.page_size_query_param)
+        try:
+            per_page_int = int(per_page)
+        except (TypeError, ValueError):
+            per_page_int = default
+        else:
+            if per_page_int not in self.page_size_options:
+                per_page_int = default
+
+        self._current_page_size = per_page_int
+        return per_page_int
+
+    def get_current_page_size(self):
+        return self._current_page_size or self.paginate_by
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["page_size_options"] = self.page_size_options
+        context["current_page_size"] = self.get_current_page_size()
+        context["page_size_query_param"] = self.page_size_query_param
+
+        querydict = self.request.GET.copy()
+        if "page" in querydict:
+            querydict = querydict.copy()
+            querydict.pop("page")
+
+        context["pagination_query"] = urlencode(querydict, doseq=True)
+        return context
+
 # ========
 # CLUB
 # ========
-class ClubListView(AdminBaseView, PermissionRequiredMixin, ListView):
+class ClubListView(PageSizeMixin, AdminBaseView, PermissionRequiredMixin, ListView):
     permission_required = "ligas.view_club"
     model = Club
     template_name = "ligas/administracion/club_list.html"
@@ -102,7 +144,7 @@ class ClubDeleteView(AjaxTemplateMixin, AdminBaseView, PermissionRequiredMixin, 
 # ========
 # TORNEO
 # ========
-class TorneoListView(AdminBaseView, PermissionRequiredMixin, ListView):
+class TorneoListView(PageSizeMixin, AdminBaseView, PermissionRequiredMixin, ListView):
     permission_required = "ligas.view_torneo"
     model = Torneo
     template_name = "ligas/administracion/torneo_list.html"
@@ -145,7 +187,7 @@ class TorneoDeleteView(AjaxTemplateMixin, AdminBaseView, PermissionRequiredMixin
 # ========
 # RONDA
 # ========
-class RondaListView(AdminBaseView, PermissionRequiredMixin, ListView):
+class RondaListView(PageSizeMixin, AdminBaseView, PermissionRequiredMixin, ListView):
     permission_required = "ligas.view_ronda"
     model = Ronda
     template_name = "ligas/administracion/ronda_list.html"
@@ -188,7 +230,7 @@ class RondaDeleteView(AjaxTemplateMixin, AdminBaseView, PermissionRequiredMixin,
 # ===========
 # CATEGORIA
 # ===========
-class CategoriaListView(AdminBaseView, PermissionRequiredMixin, ListView):
+class CategoriaListView(PageSizeMixin, AdminBaseView, PermissionRequiredMixin, ListView):
     permission_required = "ligas.view_categoria"
     model = Categoria
     template_name = "ligas/administracion/categoria_list.html"
@@ -231,7 +273,7 @@ class CategoriaDeleteView(AjaxTemplateMixin, AdminBaseView, PermissionRequiredMi
 # ========
 # EQUIPO
 # ========
-class EquipoListView(AdminBaseView, PermissionRequiredMixin, ListView):
+class EquipoListView(PageSizeMixin, AdminBaseView, PermissionRequiredMixin, ListView):
     permission_required = "ligas.view_equipo"
     model = Equipo
     template_name = "ligas/administracion/equipo_list.html"
@@ -331,7 +373,7 @@ class EquipoDeleteView(AjaxTemplateMixin, AdminBaseView, PermissionRequiredMixin
 # =========
 # JUGADOR
 # =========
-class JugadorListView(AdminBaseView, PermissionRequiredMixin, ListView):
+class JugadorListView(PageSizeMixin, AdminBaseView, PermissionRequiredMixin, ListView):
     permission_required = "ligas.view_jugador"
     model = Jugador
     template_name = "ligas/administracion/jugador_list.html"
@@ -384,7 +426,7 @@ class JugadorDeleteView(AjaxTemplateMixin, AdminBaseView, PermissionRequiredMixi
 # =========
 # ARBITRO
 # =========
-class ArbitroListView(AdminBaseView, PermissionRequiredMixin, ListView):
+class ArbitroListView(PageSizeMixin, AdminBaseView, PermissionRequiredMixin, ListView):
     permission_required = "ligas.view_arbitro"
     model = Arbitro
     template_name = "ligas/administracion/arbitro_list.html"
@@ -457,7 +499,7 @@ class IdentidadView(AdminBaseView, PermissionRequiredMixin, UpdateView):
 # ========
 # LIGA
 # ========
-class LigaListView(AdminBaseView, PermissionRequiredMixin, ListView):
+class LigaListView(PageSizeMixin, AdminBaseView, PermissionRequiredMixin, ListView):
     permission_required = "ligas.view_liga"
     model = Liga
     template_name = "ligas/administracion/liga_list.html"

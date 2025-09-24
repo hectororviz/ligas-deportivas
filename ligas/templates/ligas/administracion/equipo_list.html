@@ -14,9 +14,14 @@
 {% endblock %}
 {% block content %}
   <div id="listContainer">
-  <table>
+  <table data-enhanced-list>
     <thead>
-      <tr><th>Club</th><th>Categoría</th><th>Alias</th><th>Acciones</th></tr>
+      <tr>
+        <th data-sort="text" data-filter="text">Club</th>
+        <th data-sort="text" data-filter="text">Categoría</th>
+        <th data-sort="text" data-filter="text">Alias</th>
+        <th data-sortable="false">Acciones</th>
+      </tr>
     </thead>
     <tbody>
       {% for obj in object_list %}
@@ -31,20 +36,10 @@
         </td>
       </tr>
       {% empty %}
-      <tr><td colspan="4">No hay equipos.</td></tr>
+      <tr class="empty-row"><td colspan="4">No hay equipos.</td></tr>
       {% endfor %}
     </tbody>
   </table>
-  {% if is_paginated %}
-  <div class="pagination">
-    {% if page_obj.has_previous %}
-      <a href="?q={{ request.GET.q }}&page={{ page_obj.previous_page_number }}">« Anterior</a>
-    {% endif %}
-    <span class="current">Página {{ page_obj.number }} de {{ paginator.num_pages }}</span>
-    {% if page_obj.has_next %}
-      <a href="?q={{ request.GET.q }}&page={{ page_obj.next_page_number }}">Siguiente »</a>
-    {% endif %}
-  </div>
-  {% endif %}
+  {% include 'ligas/administracion/_table_footer.html' %}
   </div>
 {% endblock %}

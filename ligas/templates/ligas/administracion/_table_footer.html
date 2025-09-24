@@ -1,0 +1,29 @@
+<div class="table-footer">
+  <form method="get" class="table-page-size-form">
+    <label>
+      Mostrar
+      <select name="{{ page_size_query_param }}" onchange="this.form.submit()">
+        {% for option in page_size_options %}
+          <option value="{{ option }}"{% if option == current_page_size %} selected{% endif %}>{{ option }}</option>
+        {% endfor %}
+      </select>
+      entradas
+    </label>
+    {% for key, value in request.GET.items %}
+      {% if key != page_size_query_param and key != 'page' %}
+        <input type="hidden" name="{{ key }}" value="{{ value }}">
+      {% endif %}
+    {% endfor %}
+  </form>
+  {% if is_paginated and page_obj %}
+  <div class="pagination">
+    {% if page_obj.has_previous %}
+      <a href="?{% if pagination_query %}{{ pagination_query }}&{% endif %}page={{ page_obj.previous_page_number }}">« Anterior</a>
+    {% endif %}
+    <span class="current">Página {{ page_obj.number }} de {{ paginator.num_pages }}</span>
+    {% if page_obj.has_next %}
+      <a href="?{% if pagination_query %}{{ pagination_query }}&{% endif %}page={{ page_obj.next_page_number }}">Siguiente »</a>
+    {% endif %}
+  </div>
+  {% endif %}
+</div>

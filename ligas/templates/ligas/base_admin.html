@@ -185,6 +185,7 @@
       }
     })();
   </script>
+  <script src="{% static 'ligas/admin-tables.js' %}"></script>
   <!-- Modal container -->
   <div id="modalBackdrop" class="modal-backdrop" hidden>
     <div class="modal-window" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
@@ -221,6 +222,9 @@
           const currentList = document.getElementById('listContainer');
           if (newList && currentList) {
             currentList.replaceWith(newList);
+            if (window.AdminTables && typeof window.AdminTables.init === 'function') {
+              window.AdminTables.init(newList);
+            }
           }
         } catch (e) { console.warn('No se pudo refrescar la lista', e); }
       }

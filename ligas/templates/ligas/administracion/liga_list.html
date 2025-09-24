@@ -28,21 +28,11 @@
         </td>
       </tr>
       {% empty %}
-      <tr><td colspan="3">No hay ligas.</td></tr>
+      <tr class="empty-row"><td colspan="3">No hay ligas.</td></tr>
       {% endfor %}
     </tbody>
   </table>
-  {% if is_paginated %}
-  <div class="pagination">
-    {% if page_obj.has_previous %}
-      <a href="?q={{ request.GET.q }}&page={{ page_obj.previous_page_number }}">« Anterior</a>
-    {% endif %}
-    <span class="current">Página {{ page_obj.number }} de {{ paginator.num_pages }}</span>
-    {% if page_obj.has_next %}
-      <a href="?q={{ request.GET.q }}&page={{ page_obj.next_page_number }}">Siguiente »</a>
-    {% endif %}
-  </div>
-  {% endif %}
+  {% include 'ligas/administracion/_table_footer.html' %}
   </div>
 {% endblock %}
 
