@@ -241,3 +241,4 @@ class TorneoFixtureViewTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertTrue(response.context["fixture_table_missing"])
         self.assertContains(response, "No se detectó la tabla de partidos de fixture")
+

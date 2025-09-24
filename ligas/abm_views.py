@@ -282,6 +282,7 @@ class TorneoFixtureView(AdminBaseView, PermissionRequiredMixin, TemplateView):
             partidos = []
             fixture_table_missing = True
 
+
         fixture_exists = bool(partidos)
         rondas, libres, fechas_por_ronda, rounds_data = self._build_fixture_context(clubes, partidos)
 
@@ -315,13 +316,17 @@ class TorneoFixtureView(AdminBaseView, PermissionRequiredMixin, TemplateView):
                 "clubes": clubes,
                 "club_count": len(clubes),
                 "fixture_exists": fixture_exists,
+
                 "fixture_table_missing": fixture_table_missing,
+
                 "fixture_rondas": rondas,
                 "fixture_libres": libres,
                 "fixture_fechas": fechas_por_ronda,
                 "fecha_count": fechas_totales,
+
                 "can_generate": self.request.user.has_perm("ligas.add_partidofixture")
                 and not fixture_table_missing,
+
                 "has_bye": len(clubes) % 2 == 1,
                 "ronda_labels": ronda_labels,
                 "fixture_rounds_data": rounds_view,

@@ -6,7 +6,9 @@ from dataclasses import dataclass
 from typing import List, Optional, Sequence, Tuple
 
 from django.db import transaction
+
 from django.db.utils import OperationalError, ProgrammingError
+
 
 from .models import Club, PartidoFixture, Torneo
 
@@ -157,6 +159,7 @@ def generate_fixture(torneo: Torneo, clubs: Sequence[Club]) -> List[FixtureMatch
         raise FixtureGenerationError(
             "No se pudo acceder a la tabla de partidos de fixture. Ejecutá las migraciones pendientes."
         ) from exc
+
 
     return created_matches
 
