@@ -13,9 +13,15 @@
 {% endblock %}
 {% block content %}
   <div id="listContainer">
-  <table>
+  <table data-enhanced-list>
     <thead>
-      <tr><th>Nombre</th><th>Liga</th><th>Activa</th><th>Acciones</th></tr>
+      <tr>
+        <th data-sort="text" data-filter="text">Nombre</th>
+        <th data-sort="text" data-filter="text">Liga</th>
+        <th data-sort="boolean" data-filter="boolean">Activa</th>
+        <th data-sort="boolean" data-filter="boolean">Suma puntos</th>
+        <th data-sortable="false">Acciones</th>
+      </tr>
     </thead>
     <tbody>
       {% for obj in object_list %}
@@ -23,26 +29,17 @@
         <td>{{ obj.nombre }}</td>
         <td>{{ obj.liga }}</td>
         <td>{% if obj.activa %}Sí{% else %}No{% endif %}</td>
+        <td>{% if obj.suma_puntos_general %}Sí{% else %}No{% endif %}</td>
         <td>
           {% if perms.ligas.change_categoria %}<a class="btn js-open-modal" data-modal-title="Editar categoría" href="{% url 'ligas:categoria_update' obj.pk %}">Editar</a>{% endif %}
           {% if perms.ligas.delete_categoria %}<a class="btn danger js-open-modal" data-modal-title="Eliminar categoría" href="{% url 'ligas:categoria_delete' obj.pk %}">Eliminar</a>{% endif %}
         </td>
       </tr>
       {% empty %}
-      <tr><td colspan="4">No hay categorías.</td></tr>
+      <tr class="empty-row"><td colspan="5">No hay categorías.</td></tr>
       {% endfor %}
     </tbody>
   </table>
-  {% if is_paginated %}
-  <div class="pagination">
-    {% if page_obj.has_previous %}
-      <a href="?q={{ request.GET.q }}&page={{ page_obj.previous_page_number }}">« Anterior</a>
-    {% endif %}
-    <span class="current">Página {{ page_obj.number }} de {{ paginator.num_pages }}</span>
-    {% if page_obj.has_next %}
-      <a href="?q={{ request.GET.q }}&page={{ page_obj.next_page_number }}">Siguiente »</a>
-    {% endif %}
-  </div>
-  {% endif %}
+  {% include 'ligas/administracion/_table_footer.html' %}
   </div>
 {% endblock %}
