@@ -1,7 +1,7 @@
 from django.contrib import admin
 from .models import (
     Club, Liga, Torneo, Ronda, Categoria, Equipo,
-    Jugador, Arbitro, Fecha, Partido,
+    Jugador, Arbitro, Fecha, Partido, PartidoFixture,
     EventoPartido, ReglaPuntos, TablaPosicion
 )
 
@@ -63,6 +63,14 @@ class PartidoAdmin(admin.ModelAdmin):
     list_filter = ("categoria__liga__temporada", "categoria__nombre", "jugado")
     search_fields = ("local__club__nombre", "visitante__club__nombre")
     autocomplete_fields = ("arbitro", "local", "visitante", "categoria")
+
+
+@admin.register(PartidoFixture)
+class PartidoFixtureAdmin(admin.ModelAdmin):
+    list_display = ("torneo", "ronda", "fecha_nro", "club_local", "club_visitante", "jugado")
+    list_filter = ("torneo__liga__temporada", "torneo__nombre", "ronda", "jugado")
+    search_fields = ("club_local__nombre", "club_visitante__nombre", "torneo__nombre")
+    autocomplete_fields = ("torneo", "club_local", "club_visitante")
 
 @admin.register(EventoPartido)
 class EventoPartidoAdmin(admin.ModelAdmin):
