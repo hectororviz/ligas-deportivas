@@ -7,6 +7,9 @@ from typing import List, Optional, Sequence, Tuple
 
 from django.db import transaction
 
+from django.db.utils import OperationalError, ProgrammingError
+
+
 from .models import Club, PartidoFixture, Torneo
 
 
@@ -112,45 +115,51 @@ def generate_fixture(torneo: Torneo, clubs: Sequence[Club]) -> List[FixtureMatch
     ronda_ida, ronda_vuelta, _ = _build_rounds(clubes)
     created_matches: List[FixtureMatch] = []
 
-    with transaction.atomic():
-        if PartidoFixture.objects.filter(torneo=torneo).exists():
-            raise FixtureAlreadyExists("El torneo ya tiene un fixture generado.")
+    try:
+        with transaction.atomic():
+            if PartidoFixture.objects.filter(torneo=torneo).exists():
+                raise FixtureAlreadyExists("El torneo ya tiene un fixture generado.")
 
-        for fecha_idx, fecha in enumerate(ronda_ida, start=1):
-            for local, visitante in fecha:
-                match = PartidoFixture.objects.create(
-                    torneo=torneo,
-                    ronda=PartidoFixture.RONDA_IDA,
-                    fecha_nro=fecha_idx,
-                    club_local=local,
-                    club_visitante=visitante,
-                )
-                created_matches.append(
-                    FixtureMatch(
-                        ronda=match.ronda,
-                        fecha=match.fecha_nro,
-                        local=local,
-                        visitante=visitante,
+            for fecha_idx, fecha in enumerate(ronda_ida, start=1):
+                for local, visitante in fecha:
+                    match = PartidoFixture.objects.create(
+                        torneo=torneo,
+                        ronda=PartidoFixture.RONDA_IDA,
+                        fecha_nro=fecha_idx,
+                        club_local=local,
+                        club_visitante=visitante,
                     )
-                )
+                    created_matches.append(
+                        FixtureMatch(
+                            ronda=match.ronda,
+                            fecha=match.fecha_nro,
+                            local=local,
+                            visitante=visitante,
+                        )
+                    )
 
-        for fecha_idx, fecha in enumerate(ronda_vuelta, start=1):
-            for local, visitante in fecha:
-                match = PartidoFixture.objects.create(
-                    torneo=torneo,
-                    ronda=PartidoFixture.RONDA_VUELTA,
-                    fecha_nro=fecha_idx,
-                    club_local=local,
-                    club_visitante=visitante,
-                )
-                created_matches.append(
-                    FixtureMatch(
-                        ronda=match.ronda,
-                        fecha=match.fecha_nro,
-                        local=local,
-                        visitante=visitante,
+            for fecha_idx, fecha in enumerate(ronda_vuelta, start=1):
+                for local, visitante in fecha:
+                    match = PartidoFixture.objects.create(
+                        torneo=torneo,
+                        ronda=PartidoFixture.RONDA_VUELTA,
+                        fecha_nro=fecha_idx,
+                        club_local=local,
+                        club_visitante=visitante,
                     )
-                )
+                    created_matches.append(
+                        FixtureMatch(
+                            ronda=match.ronda,
+                            fecha=match.fecha_nro,
+                            local=local,
+                            visitante=visitante,
+                        )
+                    )
+    except (ProgrammingError, OperationalError) as exc:
+        raise FixtureGenerationError(
+            "No se pudo acceder a la tabla de partidos de fixture. Ejecutá las migraciones pendientes."
+        ) from exc
+
 
     return created_matches
 

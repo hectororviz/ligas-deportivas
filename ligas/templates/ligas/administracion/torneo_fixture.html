@@ -13,6 +13,11 @@
 {% endblock %}
 {% block content %}
   <div class="muted">Liga: {{ torneo.liga }}</div>
+
+  {% if fixture_table_missing %}
+    <p style="color:#b91c1c; margin-top:12px;">No se detectó la tabla de partidos de fixture. Ejecutá las migraciones pendientes (<code>python manage.py migrate</code>).</p>
+  {% endif %}
+
   <h2>Clubes participantes ({{ club_count }})</h2>
   {% if clubes %}
   <ul>

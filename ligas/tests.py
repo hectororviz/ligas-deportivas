@@ -1,4 +1,7 @@
+from unittest import mock
+
 from django.contrib.auth.models import Permission, User
+from django.db.utils import ProgrammingError
 from django.test import TestCase
 from django.urls import reverse
 
@@ -167,6 +170,23 @@ class FixtureGenerationServiceTests(TestCase):
         with self.assertRaises(FixtureGenerationError):
             generate_fixture(Torneo.objects.create(liga=self.liga, nombre="Preliminar"), [clubes[0]])
 
+    def test_generate_fixture_missing_table(self):
+        clubes = [
+            Club.objects.create(nombre="Club X"),
+            Club.objects.create(nombre="Club Y"),
+        ]
+
+        with mock.patch.object(
+            PartidoFixture.objects,
+            "filter",
+            side_effect=ProgrammingError("missing relation"),
+        ):
+            with self.assertRaises(FixtureGenerationError) as ctx:
+                generate_fixture(self.torneo_par, clubes)
+
+        self.assertIn("migraciones", str(ctx.exception))
+        self.assertFalse(PartidoFixture.objects.filter(torneo=self.torneo_par).exists())
+
 
 class TorneoFixtureViewTests(TestCase):
     def setUp(self):
@@ -209,3 +229,16 @@ class TorneoFixtureViewTests(TestCase):
         response = self.client.post(self.url)
         self.assertRedirects(response, self.url)
         self.assertEqual(PartidoFixture.objects.filter(torneo=self.torneo).count(), count)
+
+    def test_fixture_page_handles_missing_table(self):
+        with mock.patch.object(
+            PartidoFixture.objects,
+            "filter",
+            side_effect=ProgrammingError("missing relation"),
+        ):
+            response = self.client.get(self.url)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.context["fixture_table_missing"])
+        self.assertContains(response, "No se detectó la tabla de partidos de fixture")
+
